@@ -12,7 +12,7 @@ For every function defined in the input module, **HelloWorld** prints its name
 and the number of arguments that it takes. You can build it like this:
 
 ```bash
-export LLVM_DIR=<installation/dir/of/llvm/15>
+export LLVM_DIR=<installation/dir/of/llvm/16>
 mkdir build
 cd build
 cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR <source/dir/llvm/tutor>/HelloWorld/
