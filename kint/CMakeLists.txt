@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
 project(CS526-KINT-kint)
 
-# ===============================================================================
-# 1. LOAD LLVM CONFIGURATION
-# ===============================================================================
 # Set this to a valid LLVM installation dir
+set(CMAKE_GENERATOR "Ninja")
+
 set(LT_LLVM_INSTALL_DIR
     ""
     CACHE PATH "LLVM installation directory")
@@ -13,16 +12,12 @@ set(LT_LLVM_INSTALL_DIR
 # find_package can locate it)
 list(APPEND CMAKE_PREFIX_PATH "${LT_LLVM_INSTALL_DIR}/lib/cmake/llvm/")
 
-# HelloWorld includes headers from LLVM - update the include paths accordingly
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 
-# ===============================================================================
-# 1. LLVM-TUTOR BUILD CONFIGURATION
-# ===============================================================================
 # Use the same C++ standard as LLVM does
 set(CMAKE_CXX_STANDARD
     17
-    CACHE STRING "")
+    )
 
 # LLVM is normally built without RTTI. Be consistent with that.
 if(NOT LLVM_ENABLE_RTTI)
@@ -30,20 +25,28 @@ if(NOT LLVM_ENABLE_RTTI)
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wimplicit-fallthrough -fPIC -g")
 
+EXTERNALPROJECT_ADD(z3-repo
+        GIT_REPOSITORY "https://github.com/Z3Prover/z3.git"
+        GIT_TAG        "z3-4.12.1"
+
+        CMAKE_ARGS 
+        -DZ3_ENABLE_EXAMPLE_TARGETS=0
+        -DZ3_BUILD_PYTHON_BINDINGS=0
+        -DZ3_BUILD_LIBZ3_SHARED=0
+        -DZ3_BUILD_TEST_EXECUTABLES=0
+        -DZ3_BUILD_EXECUTABLE=0
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/z3
+)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/z3/include)
+
+
 # ===============================================================================
 # 1. ADD THE TARGET
 # ===============================================================================
-add_library(KINT MODULE
+add_llvm_library(
+    KINT MODULE kint.cpp
     # List your source files here.
-    CheckInsertion.cpp
-    CompilerAttributes.h
-    Constraints.cpp
-    Constraints.h
-    SMTQuery.cpp
-    SMTSolver.h
+    DEPENDS z3-repo
+    # LINK_LIBS "${CMAKE_CURRENT_BINARY_DIR}/z3/lib64/${CMAKE_SHARED_LIBRARY_PREFIX}z3${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    PLUGIN_TOOL opt
 )
-
-# Allow undefined symbols in shared objects on Darwin (this is the default
-# behaviour on Linux)
-target_link_libraries(HelloWorld
-                      "$<$<PLATFORM_ID:Darwin>:-undefined dynamic_lookup>")

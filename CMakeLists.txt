@@ -1,10 +1,38 @@
 cmake_minimum_required(VERSION 3.14)
 include(FetchContent)
+include(ExternalProject)
+
 project(CS526-KINT)
 
-set(CMAKE_CXX_STANDARD
-    17
-    CACHE STRING "")
+set(LT_LLVM_INSTALL_DIR "" CACHE PATH "LLVM installation directory")
+set(LT_LLVM_INCLUDE_DIR "${LT_LLVM_INSTALL_DIR}/include/llvm")
+if(NOT EXISTS "${LT_LLVM_INCLUDE_DIR}")
+message(FATAL_ERROR
+  " LT_LLVM_INSTALL_DIR (${LT_LLVM_INCLUDE_DIR}) is invalid.")
+endif()
+
+# 1.2 Check that the LLVMConfig.cmake file exists (the location depends on the
+# OS)
+set(LT_VALID_INSTALLATION FALSE)
+
+# Ubuntu + Darwin
+if(EXISTS "${LT_LLVM_INSTALL_DIR}/lib/cmake/llvm/LLVMConfig.cmake")
+  set(LT_VALID_INSTALLATION TRUE)
+endif()
+
+# Fedora
+if(EXISTS "${LT_LLVM_INSTALL_DIR}/lib64/cmake/llvm/LLVMConfig.cmake")
+  set(LT_VALID_INSTALLATION TRUE)
+endif()
+
+if(NOT ${LT_VALID_INSTALLATION})
+  message(FATAL_ERROR
+    "LLVM installation directory, (${LT_LLVM_INSTALL_DIR}), is invalid. Couldn't
+    find LLVMConfig.cmake.")
+endif()
+
+
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_GENERATOR "Ninja")
 message("generator is set to ${CMAKE_GENERATOR}")
 list(APPEND CMAKE_PREFIX_PATH "${LT_LLVM_INSTALL_DIR}/lib/cmake/llvm/")
@@ -31,6 +59,11 @@ include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(LLVM-Config)
+include(HandleLLVMOptions)
+include(AddLLVM)
+
 # Build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE
@@ -56,3 +89,4 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 #   link/include paths are available for the sub-projects.
 # ===============================================================================
 add_subdirectory(HelloWorld)
+add_subdirectory(kint)
