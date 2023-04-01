@@ -13,10 +13,9 @@ and the number of arguments that it takes. You can build it like this:
 
 ```bash
 export LLVM_DIR=<installation/dir/of/llvm/16>
-mkdir build
+cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -B build
+cmake --build ./build/
 cd build
-cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR ../
-cmake --build .
 ```
 
 Before you can test it, you need to prepare an input file:
