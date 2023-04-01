@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "*.salsa": "java",
-        "*.pl": "prolog",
-        "ostream": "cpp"
-    }
-}
