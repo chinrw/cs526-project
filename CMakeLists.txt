@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.14)
+include(FetchContent)
+project(CS526-KINT)
+
+set(CMAKE_CXX_STANDARD
+    17
+    CACHE STRING "")
+set(CMAKE_GENERATOR "Ninja")
+message("generator is set to ${CMAKE_GENERATOR}")
+list(APPEND CMAKE_PREFIX_PATH "${LT_LLVM_INSTALL_DIR}/lib/cmake/llvm/")
+
+find_package(LLVM 16 REQUIRED CONFIG)
+
+# Another sanity check
+if(NOT "16" VERSION_EQUAL "${LLVM_VERSION_MAJOR}")
+  message(FATAL_ERROR "Found LLVM ${LLVM_VERSION_MAJOR}, but need LLVM 15")
+endif()
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LT_LLVM_INSTALL_DIR}")
+
+message(
+  "LLVM STATUS:
+  Definitions ${LLVM_DEFINITIONS}
+  Includes    ${LLVM_INCLUDE_DIRS}
+  Libraries   ${LLVM_LIBRARY_DIRS}
+  Targets     ${LLVM_TARGETS_TO_BUILD}")
+
+# Set the LLVM header and library paths
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+link_directories(${LLVM_LIBRARY_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
+# Build type
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE
+      Debug
+      CACHE STRING "Build type (default Debug):" FORCE)
+endif()
+
+# Compiler flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall\
+  -fdiagnostics-color=always")
+
+# LLVM is normally built without RTTI. Be consistent with that.
+if(NOT LLVM_ENABLE_RTTI)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
+
+# Set the build directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+
+# ===============================================================================
+# 1. ADD SUB-TARGETS Doing this at the end so that all definitions and
+#   link/include paths are available for the sub-projects.
+# ===============================================================================
+add_subdirectory(HelloWorld)
