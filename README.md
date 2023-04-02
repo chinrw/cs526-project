@@ -13,8 +13,7 @@ and the number of arguments that it takes. You can build it like this:
 
 ```bash
 export LLVM_DIR=<installation/dir/of/llvm/16>
-cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -B build
-cmake --build ./build/
+cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 && cmake --build ./build/
 cd build
 ```
 
