@@ -45,7 +45,12 @@ INCLUDE_DIRECTORIES(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/include)
 # 1. ADD THE TARGET
 # ===============================================================================
 add_llvm_library(
-    KINT MODULE kint.cpp
+    KINT MODULE 
+    kint.cpp
+    kint_function.cpp
+    kint_function.h
+    kint_module.cpp
+    kint_module.h
     # List your source files here.
     DEPENDS z3-repo
     # LINK_LIBS "${CMAKE_CURRENT_BINARY_DIR}/z3/lib64/${CMAKE_SHARED_LIBRARY_PREFIX}z3${CMAKE_STATIC_LIBRARY_SUFFIX}"
