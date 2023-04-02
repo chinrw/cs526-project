@@ -10,11 +10,10 @@ using namespace llvm;
 void visitor(Function &F) {
     outs() << "(llvm-tutor) Hello from: "<< F.getName() << "\n";
     outs() << "(llvm-tutor)   number of arguments: " << F.arg_size() << "\n";
-    outs() << "wowooasdfasdfasdf asdf foo" << "bar\n";
 }
 
 // New PM implementation
-struct HelloWorld : PassInfoMixin<HelloWorld> {
+struct KINT_PASS : PassInfoMixin<KINT_PASS> {
   // Main entry point, takes IR unit to run the pass on (&F) and the
   // corresponding pass manager (to be queried if need be)
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &) {
@@ -32,14 +31,14 @@ struct HelloWorld : PassInfoMixin<HelloWorld> {
 //-----------------------------------------------------------------------------
 // New PM Registration
 //-----------------------------------------------------------------------------
-llvm::PassPluginLibraryInfo getHelloWorldPluginInfo() {
-  return {LLVM_PLUGIN_API_VERSION, "HelloWorld", LLVM_VERSION_STRING,
+llvm::PassPluginLibraryInfo getKintPluginInfo() {
+  return {LLVM_PLUGIN_API_VERSION, "KintPass", LLVM_VERSION_STRING,
           [](PassBuilder &PB) {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>) {
                   if (Name == "kint-pass") {
-                    FPM.addPass(HelloWorld());
+                    FPM.addPass(KINT_PASS());
                     return true;
                   }
                   return false;
@@ -52,6 +51,6 @@ llvm::PassPluginLibraryInfo getHelloWorldPluginInfo() {
 // command line, i.e. via '-passes=hello-world'
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
-  return getHelloWorldPluginInfo();
+  return getKintPluginInfo();
 }
 

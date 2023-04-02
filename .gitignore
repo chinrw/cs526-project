@@ -72,3 +72,5 @@ _deps
 *.vsix
 
 .vscode-ctags
+
+kint/z3-repo-prefix
