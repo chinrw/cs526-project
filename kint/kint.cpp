@@ -1,9 +1,10 @@
+#include "check_insertion.h"
 #include "kint_function.h"
 #include "kint_module.h"
-#include "check_insertion.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
+#include "range.h"
 #include "z3++.h"
 
 using namespace llvm;
@@ -34,6 +35,15 @@ void registerKintPass(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (Name == "check-insertion-pass") {
           FPM.addPass(CheckInsertionPass());
+          return true;
+        }
+        return false;
+      });
+  PB.registerPipelineParsingCallback(
+      [](StringRef Name, ModulePassManager &MPM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (Name == "kint-range-analysis") {
+          MPM.addPass(KintRangeAnalysisPass());
           return true;
         }
         return false;
