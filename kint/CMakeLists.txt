@@ -52,6 +52,8 @@ add_llvm_library(
     kint_module.cpp
     kint_module.h
     # List your source files here.
+    check_insertion.cpp
+    check_insertion.h
     DEPENDS z3-repo
     # LINK_LIBS "${CMAKE_CURRENT_BINARY_DIR}/z3/lib64/${CMAKE_SHARED_LIBRARY_PREFIX}z3${CMAKE_STATIC_LIBRARY_SUFFIX}"
     PLUGIN_TOOL opt

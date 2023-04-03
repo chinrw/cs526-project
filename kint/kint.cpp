@@ -1,5 +1,6 @@
 #include "kint_function.h"
 #include "kint_module.h"
+#include "check_insertion.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
@@ -24,6 +25,15 @@ void registerKintPass(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (Name == "kint-module-pass") {
           MPM.addPass(KintModulePass());
+          return true;
+        }
+        return false;
+      });
+  PB.registerPipelineParsingCallback(
+      [](StringRef Name, FunctionPassManager &FPM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (Name == "check-insertion-pass") {
+          FPM.addPass(CheckInsertionPass());
           return true;
         }
         return false;
