@@ -3,6 +3,7 @@
 
 #include <llvm/Support/raw_ostream.h>
 
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/Analysis/LazyCallGraph.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
@@ -19,6 +20,8 @@ struct ValueRange {
   int64_t upperBound;
 };
 
+// TODO DenseMap provides better performance in many cases when compared to
+// std::unordered_map due to its memory layout and fewer cache misses.
 using RangeMap = std::unordered_map<Value *, ConstantRange>;
 
 class KintRangeAnalysisPass : public PassInfoMixin<KintRangeAnalysisPass> {

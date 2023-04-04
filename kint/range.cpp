@@ -1,6 +1,8 @@
 #include "range.h"
 
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/InstrTypes.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "llvm/Analysis/LazyCallGraph.h"
@@ -8,81 +10,69 @@
 
 using namespace llvm;
 
-ConstantRange computeOutputRange(llvm::Instruction &I,
-                                 const RangeMap &globalRangeMap) {
-  // Initialize the output range with default values.
+// compute the range for a given BinaryOperator instruction
+ConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
+                                         const RangeMap &globalRangeMap) {
+  ConstantRange lhsRange = globalRangeMap.at(BO->getOperand(0));
+  ConstantRange rhsRange = globalRangeMap.at(BO->getOperand(1));
 
-  errs() << "Instruction: " << I << "\n";
-
-  // check if instruction is binary operator
-  if (isa<BinaryOperator>(I)) {
-    errs() << "Binary Operator: " << I << "\n";
+  switch (BO->getOpcode()) {
+    case Instruction::Add:
+      return lhsRange.add(rhsRange);
+    case Instruction::Sub:
+      return lhsRange.sub(rhsRange);
+    case Instruction::Mul:
+      return lhsRange.multiply(rhsRange);
+    case Instruction::SDiv:
+      return lhsRange.sdiv(rhsRange);
+    case Instruction::UDiv:
+      return lhsRange.udiv(rhsRange);
+    case Instruction::Shl:
+      return lhsRange.shl(rhsRange);
+    case Instruction::LShr:
+      return lhsRange.lshr(rhsRange);
+    case Instruction::AShr:
+      return lhsRange.ashr(rhsRange);
+    case Instruction::SRem:
+      return lhsRange.srem(rhsRange);
+    case Instruction::URem:
+      return lhsRange.urem(rhsRange);
+    case Instruction::And:
+      return lhsRange.binaryAnd(rhsRange);
+    case Instruction::Or:
+      return lhsRange.binaryOr(rhsRange);
+    case Instruction::Xor:
+      return lhsRange.binaryXor(rhsRange);
+    default:
+      // Handle other instructions and cases as needed.
+      errs() << "Unhandled binary operator: " << BO->getOpcodeName() << "\n";
+      return rhsRange;
   }
-
-  // FIXME some error here
-  if (auto *BO = dyn_cast<BinaryOperator>(&I)) {
-    ConstantRange lhsRange = globalRangeMap.at(BO->getOperand(0));
-    ConstantRange rhsRange = globalRangeMap.at(BO->getOperand(1));
-
-    switch (BO->getOpcode()) {
-      case Instruction::Add:
-        return lhsRange.add(rhsRange);
-      case Instruction::Sub:
-        return lhsRange.sub(rhsRange);
-      case Instruction::Mul:
-        return lhsRange.multiply(rhsRange);
-      case Instruction::SDiv:
-        return lhsRange.sdiv(rhsRange);
-      case Instruction::UDiv:
-        return lhsRange.udiv(rhsRange);
-      case Instruction::Shl:
-        return lhsRange.shl(rhsRange);
-      case Instruction::LShr:
-        return lhsRange.lshr(rhsRange);
-      case Instruction::AShr:
-        return lhsRange.ashr(rhsRange);
-      case Instruction::SRem:
-        return lhsRange.srem(rhsRange);
-      case Instruction::URem:
-        return lhsRange.urem(rhsRange);
-      case Instruction::And:
-        return lhsRange.binaryAnd(rhsRange);
-      case Instruction::Or:
-        return lhsRange.binaryOr(rhsRange);
-      case Instruction::Xor:
-        return lhsRange.binaryXor(rhsRange);
-      default:
-        break;
-    }
-  }
-  // Handle other instructions and cases as needed.
-  // For now, return a full range to indicate that the result is unknown.
-  return ConstantRange::getFull(I.getType()->getIntegerBitWidth());
 }
 
-bool KintRangeAnalysisPass::analyzeFunction(llvm::Function &F,
+bool KintRangeAnalysisPass::analyzeFunction(Function &F,
                                             RangeMap &globalRangeMap) {
   // TODO add a function to check if the globalRangeMap has converged
   bool functionConverged = false;
 
-  for (llvm::BasicBlock &BB : F) {
-    for (llvm::Instruction &I : BB) {
+  for (BasicBlock &BB : F) {
+    for (Instruction &I : BB) {
       // Get the range for operands or insert a new one if it doesn't exist
-      for (llvm::Use &use : I.operands()) {
-        if (auto *operandValue = llvm::dyn_cast<llvm::Value>(&use)) {
-          // Use emplace with a lambda function
-          globalRangeMap.emplace(operandValue, [&]() {
-            return llvm::ConstantRange(
-                operandValue->getType()->getIntegerBitWidth(), true);
-          }());
-        }
+      // for (Use &use : I.operands()) {
+      //   if (auto *operandValue = dyn_cast<Value>(&use)) {
+      //     globalRangeMap.emplace(
+      //         &I, ConstantRange::getFull(
+      //                 operandValue->getType()->getIntegerBitWidth()));
+      //   }
+      // }
+      if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
+        outs() << "Found binary operator: " << operand->getOpcodeName() << "\n";
+        globalRangeMap.emplace(
+            &I, ConstantRange::getFull(I.getType()->getIntegerBitWidth()));
+        ConstantRange outputRange =
+            computeBinaryOperatorRange(operand, globalRangeMap);
+        globalRangeMap.at(&I) = outputRange;
       }
-
-      llvm::ConstantRange outputRange = computeOutputRange(I, globalRangeMap);
-      globalRangeMap.emplace(&I, [&]() {
-        return llvm::ConstantRange(I.getType()->getIntegerBitWidth(), true);
-      }());
-      // globalRangeMap[&I] = outputRange;
     }
   }
   return functionConverged;
