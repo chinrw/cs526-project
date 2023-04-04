@@ -4,6 +4,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/InstVisitor.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 
@@ -26,14 +27,15 @@ namespace {
 template <class T>
 static ConstantInt * getAnyInt(LLVMContext &CTX, T V) {
   static_assert(std::is_enum<T>::value || std::is_integral<T>::value, "Integral Required.");
-  auto Ty = Type::getIntNTy(CTX, sizeof(T) * 8);
+  // LLVM IR cmp returns int1; c++ bool converted to int 1
+  auto Ty = Type::getIntNTy(CTX, std::is_same<T, bool>::value ? 1 : sizeof(T) * 8);
   auto IsSigned = std::numeric_limits<T>::is_signed;
 
   return ConstantInt::get(Ty, V, IsSigned);
 }
 
-std::vector<Type*> getTypes(ArrayRef<Value*> V) {
-  std::vector<Type*> Ty;
+SmallVector<Type*> getTypes(const ArrayRef<Value*> V) {
+  SmallVector<Type*> Ty;
   for (auto E : V) {
     Ty.push_back(E->getType());
   }
@@ -50,10 +52,11 @@ void BinaryOperatorVisitor::visitBinaryOperator(BinaryOperator &BO) {
     //?? handle pointer
     insertOverflowCheck(BO);
     break;
-  case Instruction::SDiv:
   case Instruction::UDiv:
-  case Instruction::SRem: //?? not in paper
   case Instruction::URem: //?? not in paper
+  case Instruction::SDiv:
+  case Instruction::SRem: //?? not in paper
+    insertDivCheck(BO);
     break;
   case Instruction::Shl:
   case Instruction::LShr:
@@ -64,7 +67,6 @@ void BinaryOperatorVisitor::visitBinaryOperator(BinaryOperator &BO) {
 }
 
 void BinaryOperatorVisitor::insertOverflowCheck(BinaryOperator &BO) {
-  // should 
   // do insertion right before instruction
   auto M = BO.getModule();
   auto &CTX = M->getContext();
@@ -80,12 +82,45 @@ void BinaryOperatorVisitor::insertOverflowCheck(BinaryOperator &BO) {
   };
   auto FnTy = FunctionType::get(Type::getVoidTy(CTX), getTypes(Arg), false);
   auto Fn = M->getOrInsertFunction("__kint_overflow", FnTy);
-  assert(Fn.getFunctionType() == FnTy && "__kint_overflow type differ!");
-  auto CI = CallInst::Create(Fn, Arg, "", &BO);
+  assert(Fn.getFunctionType() == FnTy && "__kint_overflow has conflicting types!");
+
+  auto Builder = IRBuilder(&BO);
+  Builder.CreateCall(Fn, Arg);
+  // TODO: are operands constant? can we get their values?
+  // TODO: can we use existing checks, i.e *MayOverflow/computeOverflowFor*
 }
 
 void BinaryOperatorVisitor::insertDivCheck(BinaryOperator &BO) {
+  auto M = BO.getModule();
+  auto &CTX = M->getContext();
 
+  auto FnTy = FunctionType::get(Type::getVoidTy(CTX), {Type::getInt1Ty(CTX)}, false);
+  auto Fn = M->getOrInsertFunction("__kint_check", FnTy);
+  assert(Fn.getFunctionType() == FnTy && "__kint_check has conflicting types!");
+  
+  auto Builder = IRBuilder(&BO);
+  auto Dividend = BO.getOperand(0);
+  auto Divisor = BO.getOperand(1);
+  auto OperandTy = Dividend->getType();
+
+  // UB: div by 0
+  auto Zero = ConstantInt::getNullValue(OperandTy);
+  auto Check = Builder.CreateICmpEQ(Divisor, Zero, "Div0");
+
+  if (BO.getOpcode() == BinaryOperator::SDiv ||
+      BO.getOpcode() == BinaryOperator::SRem) {
+    // UB: MIN/-1 overflow
+    auto NegOne = Constant::getAllOnesValue(OperandTy);
+    auto DivisorIsNegOne = Builder.CreateICmpEQ(Divisor, NegOne);
+
+    auto Min = ConstantInt::get(OperandTy, APInt::getSignedMinValue(OperandTy->getIntegerBitWidth()));
+    auto DividendIsMin = Builder.CreateICmpEQ(Dividend, Min);
+
+    auto Overflow = Builder.CreateAnd(DivisorIsNegOne, DividendIsMin, "DivOverflow");
+    Check = Builder.CreateOr(Check, Overflow);
+  }
+
+  Builder.CreateCall(Fn, {Check});
 }
 
 void BinaryOperatorVisitor::insertShiftCheck(BinaryOperator &BO) {
@@ -93,7 +128,7 @@ void BinaryOperatorVisitor::insertShiftCheck(BinaryOperator &BO) {
 }
 
 bool BinaryOperatorVisitor::isObservable(const Instruction &Inst) {
-  // todo
+  // TODO
   return true;
 }
 

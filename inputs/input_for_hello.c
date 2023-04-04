@@ -15,6 +15,13 @@ int bar(int a, int b) {
   return (a + foo(b) * 2);
 }
 
+int baz(unsigned int a, unsigned int b) {
+  unsigned int c = a / b - a % b;
+  signed int aa = a, bb = b;
+  int cc = a / b - a % b;
+  return c + cc;
+}
+
 int fez(int a, int b, int c) {
   return (a + bar(a, b) * 2 + c * 3);
 }
@@ -29,6 +36,7 @@ int main(int argc, char *argv[]) {
 
   ret += foo(a);
   ret += bar(a, ret);
+  ret += baz(123, 4);
   ret += fez(a, ret, 123);
 	ret += test(a, ret, 123);
 
