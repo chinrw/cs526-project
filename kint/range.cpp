@@ -13,6 +13,7 @@ using namespace llvm;
 // compute the range for a given BinaryOperator instruction
 ConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
                                          const RangeMap &globalRangeMap) {
+  // FIXME: this is a hack to get the range for the operands
   ConstantRange lhsRange = globalRangeMap.at(BO->getOperand(0));
   ConstantRange rhsRange = globalRangeMap.at(BO->getOperand(1));
 
@@ -67,6 +68,7 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
       // }
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
         outs() << "Found binary operator: " << operand->getOpcodeName() << "\n";
+		  // FIXME this has the wrong key for the map
         globalRangeMap.emplace(
             &I, ConstantRange::getFull(I.getType()->getIntegerBitWidth()));
         ConstantRange outputRange =
