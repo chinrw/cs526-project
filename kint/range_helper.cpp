@@ -115,7 +115,7 @@ using namespace llvm;
                 
                 // iterates through the valid index range and calculates the union of the associated ranges,
                 // and updateing the global range map.
-                    for (int i = indexRange.getLower().getLimitedValue(); i < std::min(arraySize, indexSize); i++) {
+                    for (uint64_t i = indexRange.getLower().getLimitedValue(); i < std::min(arraySize, indexSize); i++) {
                         auto newIndexRange = ConstantRange(APInt(32, i));
                         auto newArrayRange = itGepGV -> second;
                         auto newRange = newArrayRange.unionWith(newIndexRange);
