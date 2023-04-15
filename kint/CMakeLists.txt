@@ -65,6 +65,7 @@ add_llvm_library(
     kint_module.h
     range.h
     range.cpp
+    range_helper.cpp
     init_range.cpp
     # List your source files here.
     check_insertion.cpp

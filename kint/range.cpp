@@ -1,9 +1,15 @@
 #include "range.h"
 
+#include <cstdint>
+#include <llvm-16/llvm/IR/ConstantRange.h>
+#include <llvm-16/llvm/IR/GlobalVariable.h>
+#include <llvm-16/llvm/IR/Instructions.h>
+#include <llvm-16/llvm/Support/Casting.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/InstrTypes.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
+
 
 #include "llvm/Analysis/LazyCallGraph.h"
 #include "llvm/IR/ConstantRange.h"
@@ -80,6 +86,18 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
         // ConstantRange outputRange =
         //     computeBinaryOperatorRange(operand, globalRangeMap);
         // globalRangeMap.at(&I) = outputRange;
+      } 
+      else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
+        globalRangeMap.at(&I) = handleSelectInst(operand, globalRangeMap, I);
+      } 
+      else if(auto *operand = dyn_cast_or_null<CastInst>(&I)) {
+        globalRangeMap.at(&I) = handleCastInst(operand, globalRangeMap, I);
+      } 
+      else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
+        globalRangeMap.at(&I) = handlePHINode(operand, globalRangeMap, I);
+      } 
+      else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
+        globalRangeMap.at(&I) = handleLoadInst(operand, globalRangeMap, I);
       }
     }
   }

@@ -3,6 +3,9 @@
 #include <llvm/IR/GlobalValue.h>
 #define DEBUG_TYPE "range"
 
+#include <llvm-16/llvm/IR/Instructions.h>
+#include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/InstrTypes.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "llvm/ADT/DenseMap.h"
@@ -54,6 +57,10 @@ private:
 };
 
 PassPluginLibraryInfo getKintRangeAnalysisPassPluginInfo();
+ConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I);
+ConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I);
+ConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I);
+ConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, Instruction &I);
 } // namespace llvm
 
 #endif
