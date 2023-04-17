@@ -53,6 +53,7 @@ add_llvm_library(
     kint_module.h
     range.h
     range.cpp
+    init_range.cpp
     # List your source files here.
     check_insertion.cpp
     check_insertion.h

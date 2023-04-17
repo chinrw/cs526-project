@@ -18,36 +18,36 @@ ConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
   ConstantRange rhsRange = globalRangeMap.at(BO->getOperand(1));
 
   switch (BO->getOpcode()) {
-    case Instruction::Add:
-      return lhsRange.add(rhsRange);
-    case Instruction::Sub:
-      return lhsRange.sub(rhsRange);
-    case Instruction::Mul:
-      return lhsRange.multiply(rhsRange);
-    case Instruction::SDiv:
-      return lhsRange.sdiv(rhsRange);
-    case Instruction::UDiv:
-      return lhsRange.udiv(rhsRange);
-    case Instruction::Shl:
-      return lhsRange.shl(rhsRange);
-    case Instruction::LShr:
-      return lhsRange.lshr(rhsRange);
-    case Instruction::AShr:
-      return lhsRange.ashr(rhsRange);
-    case Instruction::SRem:
-      return lhsRange.srem(rhsRange);
-    case Instruction::URem:
-      return lhsRange.urem(rhsRange);
-    case Instruction::And:
-      return lhsRange.binaryAnd(rhsRange);
-    case Instruction::Or:
-      return lhsRange.binaryOr(rhsRange);
-    case Instruction::Xor:
-      return lhsRange.binaryXor(rhsRange);
-    default:
-      // Handle other instructions and cases as needed.
-      errs() << "Unhandled binary operator: " << BO->getOpcodeName() << "\n";
-      return rhsRange;
+  case Instruction::Add:
+    return lhsRange.add(rhsRange);
+  case Instruction::Sub:
+    return lhsRange.sub(rhsRange);
+  case Instruction::Mul:
+    return lhsRange.multiply(rhsRange);
+  case Instruction::SDiv:
+    return lhsRange.sdiv(rhsRange);
+  case Instruction::UDiv:
+    return lhsRange.udiv(rhsRange);
+  case Instruction::Shl:
+    return lhsRange.shl(rhsRange);
+  case Instruction::LShr:
+    return lhsRange.lshr(rhsRange);
+  case Instruction::AShr:
+    return lhsRange.ashr(rhsRange);
+  case Instruction::SRem:
+    return lhsRange.srem(rhsRange);
+  case Instruction::URem:
+    return lhsRange.urem(rhsRange);
+  case Instruction::And:
+    return lhsRange.binaryAnd(rhsRange);
+  case Instruction::Or:
+    return lhsRange.binaryOr(rhsRange);
+  case Instruction::Xor:
+    return lhsRange.binaryXor(rhsRange);
+  default:
+    // Handle other instructions and cases as needed.
+    errs() << "Unhandled binary operator: " << BO->getOpcodeName() << "\n";
+    return rhsRange;
   }
 }
 
@@ -59,21 +59,27 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
   for (BasicBlock &BB : F) {
     for (Instruction &I : BB) {
       // Get the range for operands or insert a new one if it doesn't exist
-      // for (Use &use : I.operands()) {
-      //   if (auto *operandValue = dyn_cast<Value>(&use)) {
-      //     globalRangeMap.emplace(
-      //         &I, ConstantRange::getFull(
-      //                 operandValue->getType()->getIntegerBitWidth()));
-      //   }
+      // if (const auto store = dyn_cast<StoreInst>(&I)) {
+      //   // get global variable
+      //   const auto global =
+      //       dyn_cast<GlobalVariable>(store->getPointerOperand());
       // }
+
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
         outs() << "Found binary operator: " << operand->getOpcodeName() << "\n";
-		  // FIXME this has the wrong key for the map
+        // FIXME this has the wrong key for the map
         globalRangeMap.emplace(
-            &I, ConstantRange::getFull(I.getType()->getIntegerBitWidth()));
-        ConstantRange outputRange =
-            computeBinaryOperatorRange(operand, globalRangeMap);
-        globalRangeMap.at(&I) = outputRange;
+            operand->getOperand(0),
+            ConstantRange::getFull(
+                operand->getOperand(0)->getType()->getIntegerBitWidth()));
+        globalRangeMap.emplace(
+            operand->getOperand(1),
+            ConstantRange::getFull(
+                operand->getOperand(1)->getType()->getIntegerBitWidth()));
+
+        // ConstantRange outputRange =
+        //     computeBinaryOperatorRange(operand, globalRangeMap);
+        // globalRangeMap.at(&I) = outputRange;
       }
     }
   }
@@ -82,9 +88,10 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
 
 PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
                                              ModuleAnalysisManager &MAM) {
+
+  outs() << "Running KintRangeAnalysisPass on module" << M.getName() << "\n";
   auto &LCG = MAM.getResult<LazyCallGraphAnalysis>(M);
 
-  RangeMap globalRangeMap;
   const size_t maxIterations = 10;
 
   // Initialize the ranges for the globalRangeMap.
@@ -95,6 +102,8 @@ PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
     bool hasConverged = true;
 
     LCG.buildRefSCCs();
+
+    initRange(M);
 
     for (LazyCallGraph::RefSCC &ref_scc : LCG.postorder_ref_sccs()) {
       for (LazyCallGraph::SCC &scc : ref_scc) {

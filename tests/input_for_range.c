@@ -1,6 +1,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+uint64_t wow = 234234324234;
+uint64_t wow2;
+char string_test[] = "asdfasdf";
+uint64_t* uninit_array = NULL;
+uint64_t init_array[10] = {1,2,3,4,5,6,7};
+
+
 uint64_t add(uint64_t a, uint32_t b) { return a + b; }
 
 uint64_t subtract(uint64_t a, uint32_t b) { return a - b; }
