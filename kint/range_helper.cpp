@@ -17,12 +17,12 @@ using namespace llvm;
  KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
     // Add a full range for the current instruction to the global range map
-    globalRangeMap.emplace(&I, ConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
+    globalRangeMap.emplace(&I, KintConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
     // Get the true and false values from the SelectInst
-    ConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
-    ConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
+    KintConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
+    KintConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
     // Compute the new range by taking the union of the true and false value ranges
-    ConstantRange outputRange = trueRange.unionWith(falseRange);
+    KintConstantRange outputRange = trueRange.unionWith(falseRange);
     // Update the global range map with the computed range
     return outputRange;
 }
@@ -63,12 +63,12 @@ using namespace llvm;
 
  KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found phi node: " << operand->getOpcodeName() << "\n";
-    ConstantRange outputRange = ConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
+    KintConstantRange outputRange = KintConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(operand, outputRange);
     // Iterate through the incoming values of the PHI node
     for (unsigned i = 0; i < operand->getNumIncomingValues(); i++) {
         // Get the range of the incoming value
-        ConstantRange incomingRange = globalRangeMap.at(operand->getIncomingValue(i));
+        KintConstantRange incomingRange = globalRangeMap.at(operand->getIncomingValue(i));
         // Union the incoming range with the PHI node range
         outputRange = outputRange.unionWith(incomingRange);
         }

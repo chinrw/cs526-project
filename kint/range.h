@@ -46,6 +46,7 @@ private:
   void initRange(Module &M);
   void funcSinkCheck(Function &F);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
+  
 };
 
 PassPluginLibraryInfo getKintRangeAnalysisPassPluginInfo();
