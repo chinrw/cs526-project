@@ -14,14 +14,13 @@ and the number of arguments that it takes. You can build it like this:
 ```bash
 export LLVM_DIR=<installation/dir/of/llvm/16>
 cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 && cmake --build ./build/
-cd build
 ```
 
 Before you can test it, you need to prepare an input file:
 
 ```bash
 # Make sure inside build folder generate an LLVM test file
-$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ../inputs/input_for_hello.c -o input_for_hello.ll
+$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_hello.c -o ./build/input_for_hello.ll
 ```
 
 Finally, run **HelloWorld** with
@@ -30,7 +29,7 @@ on Linux and `libHelloWorld.dylib` on Mac OS):
 
 ```bash
 # Run the pass
-$LLVM_DIR/bin/opt -load-pass-plugin ./lib/libHelloWorld.so -passes=hello-world -disable-output input_for_hello.ll
+$LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/libHelloWorld.so -passes=hello-world -disable-output ./build/input_for_hello.ll
 # Expected output
 (llvm-tutor) Hello from: foo
 (llvm-tutor)   number of arguments: 1
