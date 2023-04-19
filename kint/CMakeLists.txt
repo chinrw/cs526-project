@@ -55,13 +55,6 @@ link_directories(${MY_EXTERNAL_PROJECT_LIB_DIR})
 set(CMAKE_INSTALL_RPATH ${MY_EXTERNAL_PROJECT_LIB_DIR})
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-find_library(MY_EXTERNAL_PROJECT_LIBRARY
-  NAMES z3
-  PATHS ${MY_EXTERNAL_PROJECT_LIB_DIR}
-  NO_DEFAULT_PATH
-)
-
-
 add_llvm_library(
     KINT MODULE 
     kint.cpp
@@ -79,4 +72,4 @@ add_llvm_library(
     PLUGIN_TOOL opt
 )
 
-target_link_libraries(KINT PRIVATE ${MY_EXTERNAL_PROJECT_LIBRARY})
+target_link_libraries(KINT PRIVATE ${MY_EXTERNAL_PROJECT_LIB_DIR}/libz3.so)
