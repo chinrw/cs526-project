@@ -44,6 +44,24 @@ INCLUDE_DIRECTORIES(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/include)
 # ===============================================================================
 # 1. ADD THE TARGET
 # ===============================================================================
+
+set(MY_EXTERNAL_PROJECT_INCLUDE_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/include)
+set(MY_EXTERNAL_PROJECT_LIB_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/lib64)
+
+include_directories(${MY_EXTERNAL_PROJECT_INCLUDE_DIR})
+include_directories(${MY_EXTERNAL_PROJECT_LIB_DIR})
+link_directories(${MY_EXTERNAL_PROJECT_LIB_DIR})
+
+set(CMAKE_INSTALL_RPATH ${MY_EXTERNAL_PROJECT_LIBRARY})
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+find_library(MY_EXTERNAL_PROJECT_LIBRARY
+  NAMES z3
+  PATHS ${MY_EXTERNAL_PROJECT_LIB_DIR}
+  NO_DEFAULT_PATH
+)
+
+
 add_llvm_library(
     KINT MODULE 
     kint.cpp
@@ -61,5 +79,4 @@ add_llvm_library(
     PLUGIN_TOOL opt
 )
 
-
-target_link_libraries(KINT PRIVATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/lib64/${CMAKE_SHARED_LIBRARY_PREFIX}z3.so)
+target_link_libraries(KINT PRIVATE ${MY_EXTERNAL_PROJECT_LIBRARY})
