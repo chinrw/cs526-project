@@ -16,6 +16,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
+#include <set>
 
 namespace llvm {
 
@@ -45,6 +46,8 @@ using RangeMap = std::unordered_map<Value *, KintConstantRange>;
 class KintRangeAnalysisPass : public PassInfoMixin<KintRangeAnalysisPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM);
+  // for range error checking
+  std::set<GetElementPtrInst*> gepOutOfRange;
 
 private:
   // store the range for each value
@@ -54,13 +57,14 @@ private:
   void initGlobalVariables(Module &M);
   void initRange(Module &M);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
+  
 };
 
 PassPluginLibraryInfo getKintRangeAnalysisPassPluginInfo();
-ConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I);
-ConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I);
-ConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I);
-ConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, Instruction &I);
+KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I);
+KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I);
+KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I);
+KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, Instruction &I);
 } // namespace llvm
 
 #endif
