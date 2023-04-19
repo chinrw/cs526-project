@@ -1,14 +1,14 @@
 #include "range.h"
 
 #include <cstdint>
-#include <llvm-16/llvm/IR/ConstantRange.h>
-#include <llvm-16/llvm/IR/GlobalVariable.h>
-#include <llvm-16/llvm/IR/Instructions.h>
-#include <llvm-16/llvm/Support/Casting.h>
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/InstrTypes.h>
-#include <llvm/Support/Casting.h>
-#include <llvm/Support/raw_ostream.h>
+#include "llvm/IR/ConstantRange.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
 
 
 #include "llvm/Analysis/LazyCallGraph.h"

@@ -1,12 +1,12 @@
 #ifndef LLVM_RANGE_H
 #define LLVM_RANGE_H
-#include <llvm/IR/GlobalValue.h>
+#include "llvm/IR/GlobalValue.h"
 #define DEBUG_TYPE "range"
 
-#include <llvm-16/llvm/IR/Instructions.h>
-#include <llvm/IR/GlobalValue.h>
-#include <llvm/IR/InstrTypes.h>
-#include <llvm/Support/raw_ostream.h>
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/GlobalValue.h"
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Analysis/LazyCallGraph.h"
