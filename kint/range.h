@@ -33,10 +33,6 @@ public:
       : ConstantRange(lower, upper) {}
   KintConstantRange(unsigned bitwidth, bool isFullSet)
       : ConstantRange(bitwidth, isFullSet) {}
-
-  static KintConstantRange getFull(uint32_t bitwidth) {
-    return KintConstantRange(bitwidth, true);
-  }
 };
 
 // TODO DenseMap provides better performance in many cases when compared to
@@ -50,8 +46,7 @@ public:
 private:
   // store the range for each value
   RangeMap globalRangeMap;
-  DenseMap<const GlobalValue *, KintConstantRange>
-      globalValueRangeMap;
+  DenseMap<const GlobalValue *, KintConstantRange> globalValueRangeMap;
 
   void initGlobalVariables(Module &M);
   void initRange(Module &M);

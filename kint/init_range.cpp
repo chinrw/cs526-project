@@ -19,7 +19,7 @@ void KintRangeAnalysisPass::initGlobalVariables(Module &M) {
         DEBUG_WITH_TYPE("range", dbgs() << "Global variable " << G.getName()
                                         << " has initializer " << *C << "\n");
         // get range from initializer
-
+        globalValueRangeMap[&G] = KintConstantRange(C->getValue());
       } else {
         DEBUG_WITH_TYPE("range", dbgs() << "Global variable " << G.getName()
                                         << " has no initializer "
@@ -65,7 +65,7 @@ void KintRangeAnalysisPass::initGlobalVariables(Module &M) {
         }
       } else if (VT->getElementType()->isPointerTy()) {
         // TODO handle pointer array
-				// Maybe use recursive function to handle more complex array types
+        // Maybe use recursive function to handle more complex array types
       } else {
         // TODO handle other types
       }
