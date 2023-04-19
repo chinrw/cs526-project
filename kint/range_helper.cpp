@@ -17,25 +17,25 @@ using namespace llvm;
  KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
     // Add a full range for the current instruction to the global range map
-    globalRangeMap.emplace(&I, KintConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
+    globalRangeMap.emplace(&I, ConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
     // Get the true and false values from the SelectInst
-    KintConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
-    KintConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
+    ConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
+    ConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
     // Compute the new range by taking the union of the true and false value ranges
-    KintConstantRange outputRange = trueRange.unionWith(falseRange);
+    ConstantRange outputRange = trueRange.unionWith(falseRange);
     // Update the global range map with the computed range
     return outputRange;
 }
 
  KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found cast instruction: " << operand->getOpcodeName() << "\n";
-    KintConstantRange outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
+    ConstantRange outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(&I, outputRange);
     // Get the input operand of the cast instruction
     auto inp = operand->getOperand(0);
     // If the input operand is not an integer type, set the range to the full bit width
     if(!inp->getType()->isIntegerTy()) {
-        outputRange = KintConstantRange(operand->getType()->getIntegerBitWidth(), true);
+        outputRange = ConstantRange(operand->getType()->getIntegerBitWidth(), true);
     } else {
         // If the input is an integer type, compute the output range based on the cast operation
         auto itInp = globalRangeMap.find(inp);
@@ -63,12 +63,12 @@ using namespace llvm;
 
  KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found phi node: " << operand->getOpcodeName() << "\n";
-    KintConstantRange outputRange = KintConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
+    ConstantRange outputRange = ConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(operand, outputRange);
     // Iterate through the incoming values of the PHI node
     for (unsigned i = 0; i < operand->getNumIncomingValues(); i++) {
         // Get the range of the incoming value
-        KintConstantRange incomingRange = globalRangeMap.at(operand->getIncomingValue(i));
+        ConstantRange incomingRange = globalRangeMap.at(operand->getIncomingValue(i));
         // Union the incoming range with the PHI node range
         outputRange = outputRange.unionWith(incomingRange);
         }
