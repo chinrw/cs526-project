@@ -94,7 +94,8 @@ KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, In
         if (auto *gepGV = dyn_cast<GlobalVariable>(gepAddr)) {
             // checks if the array is one-dimensional and if it has associated range information
             if (gep->getNumIndices() == 2 && globalRangeMap.count(gepGV)) {
-                // retrieves the index being accessed in the array and calculates the size of the array and the range of the index.
+                // retrieves the index being accessed in the array and calculates the 
+                // size of the array and the range of the index.
                 auto index = gep->getOperand(1);
                 auto indexRange = globalRangeMap.at(index);
                 auto arrayRange = globalRangeMap.at(gepGV);
@@ -105,16 +106,28 @@ KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, In
                     rangeAnalysis.gepOutOfRange.insert(gep);
                 } 
 
-                // iterates through the valid index range and calculates the union of the associated ranges, and updateing the global range map.
+                // iterates through the valid index range and calculates the union of the associated ranges,
+                // and updateing the global range map.
                 for (int i = indexRange.getLower().getLimitedValue(); i < indexSize; i++) {
-                    
-                }
+                    auto indexRange = KintConstantRange(APInt(32, i));
+                    auto arrayRange = globalRangeMap.at(gepGV);
+                    auto newRange = arrayRange.unionWith(indexRange);
+                    globalRangeMap.emplace(gep, newRange);
+                }  
                 isInRange = true;
             }
         }
         if(!isInRange) {
-
+            // If the GEP operation was not successfully handled, a warning is printed,
+            //  and global map range is set to the full range.
+            outs() << "WARNING: GEP operation was not successfully handled: " << *gep << "\n";
+            outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
         }
-        outputRange = globalRangeMap.at(gep);
+    } else {
+        // If the address is not a GlobalVariable, a warning is printed,
+        // and global map range is set to the full range.
+        outs() << "WARNING: Unknown address to load: " << *ptrAddr << "\n";
+        outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     }
+    return outputRange;
 }
