@@ -62,4 +62,4 @@ add_llvm_library(
 )
 
 
-target_link_libraries(KINT ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/lib64/${CMAKE_SHARED_LIBRARY_PREFIX}z3.so)
+target_link_libraries(KINT PRIVATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/lib64/${CMAKE_SHARED_LIBRARY_PREFIX}z3.so)
