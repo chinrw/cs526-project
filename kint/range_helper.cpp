@@ -12,31 +12,29 @@
 #include <sys/types.h>
 
 using namespace llvm;
-//Initialize the set to record the out-of-bound GEP instructions
 
 KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
     // Add a full range for the current instruction to the global range map
-    globalRangeMap.emplace(&I, KintConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
+    globalRangeMap.emplace(&I, ConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
     // Get the true and false values from the SelectInst
-    KintConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
-    KintConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
+    ConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
+    ConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
     // Compute the new range by taking the union of the true and false value ranges
-    KintConstantRange outputRange = trueRange.unionWith(falseRange);
+    ConstantRange outputRange = trueRange.unionWith(falseRange);
     // Update the global range map with the computed range
     return outputRange;
 }
 
 KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found cast instruction: " << operand->getOpcodeName() << "\n";
-    KintConstantRange outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
-    globalRangeMap.emplace(
-        &I, KintConstantRange::getFull(I.getType()->getIntegerBitWidth()));
+    ConstantRange outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
+    globalRangeMap.emplace(&I, outputRange);
     // Get the input operand of the cast instruction
     auto inp = operand->getOperand(0);
     // If the input operand is not an integer type, set the range to the full bit width
     if(!inp->getType()->isIntegerTy()) {
-        outputRange = KintConstantRange(operand->getType()->getIntegerBitWidth(), true);
+        outputRange = ConstantRange(operand->getType()->getIntegerBitWidth(), true);
     } else {
         // If the input is an integer type, compute the output range based on the cast operation
         auto inpRange = globalRangeMap.at(inp);
@@ -60,12 +58,12 @@ KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, In
 
 KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found phi node: " << operand->getOpcodeName() << "\n";
-    KintConstantRange outputRange = KintConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
+    ConstantRange outputRange = ConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(operand, outputRange);
     // Iterate through the incoming values of the PHI node
     for (unsigned i = 0; i < operand->getNumIncomingValues(); i++) {
         // Get the range of the incoming value
-        KintConstantRange incomingRange = globalRangeMap.at(operand->getIncomingValue(i));
+        ConstantRange incomingRange = globalRangeMap.at(operand->getIncomingValue(i));
         // Union the incoming range with the PHI node range
         outputRange = outputRange.unionWith(incomingRange);
         }
@@ -75,7 +73,7 @@ KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Inst
 
 KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found load instruction: " << operand->getOpcodeName() << "\n";
-    KintConstantRange outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
+    ConstantRange outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(operand, outputRange);
     // Get the pointer operand of the load instruction
     auto ptrAddr = operand->getPointerOperand();
@@ -83,7 +81,7 @@ KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, In
     if (auto *GV = dyn_cast<GlobalVariable>(ptrAddr)) {
         if (GV->hasInitializer()) {
             if (auto *CI = dyn_cast<ConstantInt>(GV->getInitializer())) {
-                outputRange = KintConstantRange(CI->getValue());
+                outputRange = ConstantRange(CI->getValue());
             }
         }
     } else if (auto gep = dyn_cast<GetElementPtrInst>(ptrAddr)) {
@@ -108,10 +106,10 @@ KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, In
 
                 // iterates through the valid index range and calculates the union of the associated ranges,
                 // and updateing the global range map.
-                for (int i = indexRange.getLower().getLimitedValue(); i < indexSize; i++) {
-                    auto indexRange = KintConstantRange(APInt(32, i));
-                    auto arrayRange = globalRangeMap.at(gepGV);
-                    auto newRange = arrayRange.unionWith(indexRange);
+                for (int i = indexRange.getLower().getLimitedValue(); i < std::min(arraySize, indexSize); i++) {
+                    auto newIndexRange = ConstantRange(APInt(32, i));
+                    auto newArrayRange = globalRangeMap.at(gepGV);
+                    auto newRange = newArrayRange.unionWith(newIndexRange);
                     globalRangeMap.emplace(gep, newRange);
                 }  
                 isInRange = true;
@@ -121,13 +119,14 @@ KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, In
             // If the GEP operation was not successfully handled, a warning is printed,
             //  and global map range is set to the full range.
             outs() << "WARNING: GEP operation was not successfully handled: " << *gep << "\n";
-            outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
+            outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
         }
-    } else {
+    } 
+    else {
         // If the address is not a GlobalVariable, a warning is printed,
         // and global map range is set to the full range.
         outs() << "WARNING: Unknown address to load: " << *ptrAddr << "\n";
-        outputRange = KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
+        outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     }
     return outputRange;
 }
