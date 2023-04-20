@@ -1,15 +1,13 @@
 #include "range.h"
 
-#include <cstdint>
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/ConstantRange.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
-
+#include <cstdint>
 
 #include "llvm/Analysis/LazyCallGraph.h"
 #include "llvm/IR/ConstantRange.h"
@@ -17,11 +15,11 @@
 using namespace llvm;
 
 // compute the range for a given BinaryOperator instruction
-ConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
+KintConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
                                          const RangeMap &globalRangeMap) {
   // FIXME: this is a hack to get the range for the operands
-  ConstantRange lhsRange = globalRangeMap.at(BO->getOperand(0));
-  ConstantRange rhsRange = globalRangeMap.at(BO->getOperand(1));
+  KintConstantRange lhsRange = KintConstantRange(globalRangeMap.at(BO->getOperand(0)));
+  KintConstantRange rhsRange = KintConstantRange(globalRangeMap.at(BO->getOperand(1)));
 
   switch (BO->getOpcode()) {
   case Instruction::Add:
@@ -86,17 +84,13 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
         // ConstantRange outputRange =
         //     computeBinaryOperatorRange(operand, globalRangeMap);
         // globalRangeMap.at(&I) = outputRange;
-      } 
-      else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
+      } else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
         globalRangeMap.at(&I) = handleSelectInst(operand, globalRangeMap, I);
-      } 
-      else if(auto *operand = dyn_cast_or_null<CastInst>(&I)) {
+      } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
         globalRangeMap.at(&I) = handleCastInst(operand, globalRangeMap, I);
-      } 
-      else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
+      } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
         globalRangeMap.at(&I) = handlePHINode(operand, globalRangeMap, I);
-      } 
-      else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
+      } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
         globalRangeMap.at(&I) = handleLoadInst(operand, globalRangeMap, I);
       }
     }

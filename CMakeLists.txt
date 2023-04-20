@@ -33,7 +33,6 @@ endif()
 
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_GENERATOR "Ninja")
 message("generator is set to ${CMAKE_GENERATOR}")
 list(APPEND CMAKE_PREFIX_PATH "${LT_LLVM_INSTALL_DIR}/lib/cmake/llvm/")
 

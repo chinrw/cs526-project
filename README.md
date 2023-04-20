@@ -13,7 +13,7 @@ and the number of arguments that it takes. You can build it like this:
 
 ```bash
 export LLVM_DIR=<installation/dir/of/llvm/16>
-cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 && cmake --build ./build/
+cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -GNinja -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 && cmake --build ./build/ -v
 ```
 
 Before you can test it, you need to prepare an input file:
@@ -43,3 +43,28 @@ $LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/libHelloWorld.so -passes=hello-w
 
 The **HelloWorld** pass doesn't modify the input module. The `-disable-output`
 flag is used to prevent **opt** from printing the output bitcode file.
+
+
+Kint
+===========================
+For Kint the command is slightly different
+```bash
+export LLVM_DIR=<installation/dir/of/llvm/16>
+cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 && cmake --build ./build/
+```
+
+Before you can test it, you need to prepare an input file:
+
+```bash
+# Make sure inside build folder generate an LLVM test file
+$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_cc.c -o ./build/input_for_cc.ll
+$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_range.c -o ./build/input_for_range.ll
+```
+
+Finally, run **KINT** with
+[**opt**](http://llvm.org/docs/CommandGuide/opt.html) (use `KINT.so`)
+on Linux
+
+```bash
+# Run the pass
+$LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=check-insertion-pass -disable-output -debug ./build/input_for_cc.ll

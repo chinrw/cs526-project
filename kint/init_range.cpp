@@ -5,11 +5,53 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
+
+void KintRangeAnalysisPass::initFunctionReturn(Module &M) {
+
+  for (auto &F : M) {
+    if (F.isDeclaration()) {
+      for (auto &BB : F) {
+        if (auto *RI = dyn_cast<ReturnInst>(BB.getTerminator())) {
+          if (auto *CI = dyn_cast<ConstantInt>(RI->getReturnValue())) {
+            DEBUG_WITH_TYPE("range", dbgs() << "Function " << F.getName()
+                                            << " has return value " << *CI
+                                            << "\n");
+            // get range from initializer
+            functionReturnRangeMap[&F] = KintConstantRange(CI->getValue());
+          } else {
+            DEBUG_WITH_TYPE("range", dbgs() << "Function " << F.getName()
+                                            << " has no return value "
+                                            << "\n");
+            // get full range
+            functionReturnRangeMap[&F] = KintConstantRange::getFull(
+                RI->getReturnValue()->getType()->getIntegerBitWidth());
+          }
+        }
+      }
+    } else {
+      // handle function with body
+      if (F.getReturnType()->isIntegerTy()) {
+        // get empty range
+        functionReturnRangeMap[&F] = KintConstantRange::getEmpty(
+            F.getReturnType()->getIntegerBitWidth());
+
+        // init the range of function parameters
+
+        for (auto &A : F.args()) {
+          if (A.getType()->isIntegerTy()) {
+						// TODO taint source check
+          }
+        }
+      }
+    }
+  }
+}
 
 void KintRangeAnalysisPass::initGlobalVariables(Module &M) {
   for (const auto &G : M.globals()) {
@@ -84,4 +126,5 @@ void KintRangeAnalysisPass::initRange(Module &M) {
 
   // init global variables
   this->initGlobalVariables(M);
+  this->initFunctionReturn(M);
 }
