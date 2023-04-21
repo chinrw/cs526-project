@@ -27,6 +27,10 @@ namespace llvm {
 
 const unsigned maxIterations = 10; // Or any other suitable value
 
+// TODO DenseMap provides better performance in many cases when compared to
+// std::unordered_map due to its memory layout and fewer cache misses.
+using RangeMap = std::unordered_map<Value *, KintConstantRange>;
+
 class KintRangeAnalysisPass : public PassInfoMixin<KintRangeAnalysisPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM);
