@@ -36,16 +36,11 @@ ExternalProject_Add(
              -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3
   BUILD_BYPRODUCTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/lib64/libz3.so")
 
-include_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/include)
-
 # ===============================================================================
 # 1. ADD THE TARGET
 # ===============================================================================
 
-# include_directories(${MY_EXTERNAL_PROJECT_INCLUDE_DIR})
-# include_directories(${MY_EXTERNAL_PROJECT_LIB_DIR})
-# link_directories(${MY_EXTERNAL_PROJECT_LIB_DIR})
-# set_source_files_properties(${LIBZ3_SHARED_LIB} PROPERTIES GENERATED TRUE)
+include_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/include)
 set(LIBZ3_SHARED_LIB "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/z3/lib64/libz3.so")
 add_library(libz3 SHARED IMPORTED)
 set_target_properties(libz3 PROPERTIES IMPORTED_LOCATION "${LIBZ3_SHARED_LIB}")
@@ -69,8 +64,11 @@ add_llvm_library(
   # List your source files here.
   check_insertion.cpp
   check_insertion.h
+  tainted.cpp
+  DEPENDS
+  z3-repo
   PLUGIN_TOOL
   opt)
 
-add_dependencies(KINT libz3)
+# add_dependencies(KINT libz3)
 target_link_libraries(KINT PRIVATE libz3)
