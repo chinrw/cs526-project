@@ -50,18 +50,19 @@ private:
   void initRange(Module &M);
   void funcSinkCheck(Function &F);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
+  KintConstantRange handleSelectInst(SelectInst *operand,
+                                   RangeMap &globalRangeMap, Instruction &I);
+  KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap,
+                                  Instruction &I);
+  KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap,
+                                  Instruction &I);
+  KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap,
+                                 Instruction &I);
   
 };
 
 PassPluginLibraryInfo getKintRangeAnalysisPassPluginInfo();
-KintConstantRange handleSelectInst(SelectInst *operand,
-                                   RangeMap &globalRangeMap, Instruction &I);
-KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap,
-                                 Instruction &I);
-KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap,
-                                Instruction &I);
-KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap,
-                                 Instruction &I);
+
 } // namespace llvm
 
 #endif

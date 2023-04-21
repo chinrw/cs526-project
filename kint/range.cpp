@@ -85,13 +85,13 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
         //     computeBinaryOperatorRange(operand, globalRangeMap);
         // globalRangeMap.at(&I) = outputRange;
       } else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
-        globalRangeMap.at(&I) = handleSelectInst(operand, globalRangeMap, I);
+        globalRangeMap.at(&I) = this->handleSelectInst(operand, globalRangeMap, I);
       } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
-        globalRangeMap.at(&I) = handleCastInst(operand, globalRangeMap, I);
+        globalRangeMap.at(&I) = this->handleCastInst(operand, globalRangeMap, I);
       } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
-        globalRangeMap.at(&I) = handlePHINode(operand, globalRangeMap, I);
+        globalRangeMap.at(&I) = this->handlePHINode(operand, globalRangeMap, I);
       } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
-        globalRangeMap.at(&I) = handleLoadInst(operand, globalRangeMap, I);
+        globalRangeMap.at(&I) = this->handleLoadInst(operand, globalRangeMap, I);
       }
     }
   }

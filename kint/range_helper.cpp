@@ -14,7 +14,7 @@
 
 using namespace llvm;
 
- KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
+ KintConstantRange KintRangeAnalysisPass::handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
     // Add a full range for the current instruction to the global range map
     globalRangeMap.emplace(&I, ConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
@@ -27,7 +27,7 @@ using namespace llvm;
     return outputRange;
 }
 
- KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I) {
+ KintConstantRange KintRangeAnalysisPass::handleCastInst(CastInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found cast instruction: " << operand->getOpcodeName() << "\n";
     ConstantRange outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(&I, outputRange);
@@ -61,7 +61,7 @@ using namespace llvm;
     return outputRange;
 }
 
- KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I) {
+ KintConstantRange KintRangeAnalysisPass::handlePHINode(PHINode *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found phi node: " << operand->getOpcodeName() << "\n";
     ConstantRange outputRange = ConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(operand, outputRange);
@@ -76,7 +76,7 @@ using namespace llvm;
     return outputRange;
 }
 
- KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, Instruction &I) {
+ KintConstantRange KintRangeAnalysisPass::handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found load instruction: " << operand->getOpcodeName() << "\n";
     ConstantRange outputRange = ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     globalRangeMap.emplace(operand, outputRange);
