@@ -2,6 +2,8 @@
 #define LLVM_RANGE_H
 #include "llvm/ADT/MapVector.h"
 #include <vector>
+#include "llvm/ADT/MapVector.h"
+#include <vector>
 #define DEBUG_TYPE "range"
 
 #include <llvm/ADT/SetVector.h>
