@@ -1,3 +1,4 @@
+#include "kint_constant_range.h"
 #include "range.h"
 #include <cstddef>
 #include <cstdint>
@@ -9,11 +10,77 @@
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/Argument.h"
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/IR/Argument.h>
+#include <llvm/IR/GlobalAlias.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
 #include <sys/types.h>
 
 using namespace llvm;
 
+ KintConstantRange KintRangeAnalysisPass::getRange(Value *var, RangeMap &globalRangeMap) {
+    if (globalRangeMap.count(var)) {
+        return globalRangeMap[var];
+    }
+    // if the var is a constant integer
+    if(auto *constInt = dyn_cast<ConstantInt>(var)) {
+        return KintConstantRange(constInt->getValue());
+    } else {
+        // if the var is a global variable
+        if(auto *GV = dyn_cast<GlobalVariable>(var)) {
+            return globalValueRangeMap[GV];
+        }
+    }
+    // if the var type is unknown
+    errs() << "Uknown Operand Type: " << *var << "\n";
+    return KintConstantRange(var->getType()->getIntegerBitWidth(), true);
+ }
+ 
+ KintConstantRange KintRangeAnalysisPass::handleCallInst(CallInst *call, RangeMap &globalRangeMap, Instruction &I) {
+    KintConstantRange outputRange;
+    if(const auto f = call->getCalledFunction()) {
+        if(sinkedFunctions.contains(f->getName())) {
+            // Iterate through the arguments of the sinked function
+            for (const auto& arg : f->args()) {
+                const size_t argIndex = arg.getArgNo();
+
+                // Check if the argument is an interger type
+                if(arg.getType()->isIntegerTy()) {
+                    // Update the gloabalrangemap for the argument by taking the union of the current range
+                    // and the range of the corresponding argument in the call instruction
+                    globalRangeMap[const_cast<Argument *>(&arg)] = 
+                    getRange(call->getArgOperand(argIndex), globalRangeMap)
+                    .unionWith(getRange(const_cast<Argument *>(&arg), globalRangeMap));
+                    // Update the function range map for the correpsonding called function
+                    functionReturnRangeMap[functionsToTaintSources[f][argIndex]->getCalledFunction()] = globalRangeMap[const_cast<Argument *>(&arg)];
+                }
+            }
+        } else {
+            for(const auto &arg : f->args()) {
+                if(arg.getType()->isIntegerTy()) {
+                    globalRangeMap[const_cast<Argument *>(&arg)] =
+                    getRange(call->getArgOperand(arg.getArgNo()), globalRangeMap)
+                    .unionWith(getRange(const_cast<Argument *>(&arg), globalRangeMap));
+                }
+            }
+        }
+
+        if(f->getReturnType()->isIntegerTy()) {
+            return functionReturnRangeMap[f];
+        }
+    }
+    return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
+ }
+ KintConstantRange KintRangeAnalysisPass::handleStoreInst(StoreInst *operand, RangeMap &globalRangeMap, Instruction &I) {
+    
+ }
+ KintConstantRange KintRangeAnalysisPass::handleReturnInst(ReturnInst *operand, RangeMap &globalRangeMap, Instruction &I) {
+    
+ }
  KintConstantRange KintRangeAnalysisPass::handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
     // Add a full range for the current instruction to the global range map
