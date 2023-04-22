@@ -1,8 +1,9 @@
 #ifndef LLVM_RANGE_H
 #define LLVM_RANGE_H
+#include "llvm/ADT/MapVector.h"
+#include <vector>
 #define DEBUG_TYPE "range"
 
-#include "llvm/IR/GlobalValue.h"
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/StringRef.h>
 
@@ -44,14 +45,22 @@ private:
   DenseMap<const Function *, KintConstantRange> functionReturnRangeMap;
   SetVector<Function *> taintedFunctions;
   SetVector<StringRef> sinkedFunctions;
+  MapVector<Function*, std::vector<CallInst*>> functionsToTaintSources;
 
   void initGlobalVariables(Module &M);
   void initFunctionReturn(Module &M);
   void initRange(Module &M);
   void funcSinkCheck(Function &F);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
-  KintConstantRange handleSelectInst(SelectInst *operand,
-                                   RangeMap &globalRangeMap, Instruction &I);
+  KintConstantRange getRange(Value *var, RangeMap &rangeMap);
+  KintConstantRange handleCallInst(CallInst *operand, RangeMap &globalRangeMap,
+                                 Instruction &I);
+  KintConstantRange handleStoreInst(StoreInst *operand, RangeMap &globalRangeMap,
+                                  Instruction &I);
+  KintConstantRange handleReturnInst(ReturnInst *operand, RangeMap &globalRangeMap, 
+                                  Instruction &I);
+  KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, 
+                                  Instruction &I);
   KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap,
                                   Instruction &I);
   KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap,

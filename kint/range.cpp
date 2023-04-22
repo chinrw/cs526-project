@@ -8,6 +8,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstdint>
+#include <llvm/Support/Casting.h>
 
 #include "llvm/Analysis/LazyCallGraph.h"
 #include "llvm/IR/ConstantRange.h"
@@ -62,13 +63,16 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
 
   for (BasicBlock &BB : F) {
     for (Instruction &I : BB) {
-      // Get the range for operands or insert a new one if it doesn't exist
-      // if (const auto store = dyn_cast<StoreInst>(&I)) {
-      //   // get global variable
-      //   const auto global =
-      //       dyn_cast<GlobalVariable>(store->getPointerOperand());
-      // }
+      if (auto *call = dyn_cast_or_null<CallInst>(&I)) {
+        auto itI = globalRangeMap.find(&I);
+        if(itI != globalRangeMap.end()){  
+          globalRangeMap.at(&I) = this->handleCallInst(call, globalRangeMap, I);
+        }
+      } else if (auto *store = dyn_cast_or_null<StoreInst>(&I)) {
 
+      } else if (auto *ret = dyn_cast_or_null<ReturnInst>(&I)) {
+
+      }
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
         outs() << "Found binary operator: " << operand->getOpcodeName() << "\n";
         // FIXME this has the wrong key for the map
@@ -86,12 +90,12 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
         // globalRangeMap.at(&I) = outputRange;
       } else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
         globalRangeMap.at(&I) = this->handleSelectInst(operand, globalRangeMap, I);
-      } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
-        globalRangeMap.at(&I) = this->handleCastInst(operand, globalRangeMap, I);
-      } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
-        globalRangeMap.at(&I) = this->handlePHINode(operand, globalRangeMap, I);
-      } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
-        globalRangeMap.at(&I) = this->handleLoadInst(operand, globalRangeMap, I);
+      // } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
+      //   globalRangeMap.at(&I) = this->handleCastInst(operand, globalRangeMap, I);
+      // } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
+      //   globalRangeMap.at(&I) = this->handlePHINode(operand, globalRangeMap, I);
+      // } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
+      //   globalRangeMap.at(&I) = this->handleLoadInst(operand, globalRangeMap, I);
       }
     }
   }
