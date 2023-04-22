@@ -74,7 +74,7 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
 
       }
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
-        outs() << "Found binary operator: " << operand->getOpcodeName() << "\n";
+        // outs() << "Found binary operator: " << operand->getOpcodeName() << "\n";
         // FIXME this has the wrong key for the map
         globalRangeMap.emplace(
             operand->getOperand(0),
@@ -110,7 +110,13 @@ PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
 
   const size_t maxIterations = 10;
 
+	// mark taint sources
+	for (auto &F : M) {
+		
+	}
+
   // Initialize the ranges for the globalRangeMap.
+  initRange(M);
 
   // Perform the range analysis iteratively until convergence or a fixed
   // number of iterations.
@@ -118,8 +124,6 @@ PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
     bool hasConverged = true;
 
     LCG.buildRefSCCs();
-
-    initRange(M);
 
     for (LazyCallGraph::RefSCC &ref_scc : LCG.postorder_ref_sccs()) {
       for (LazyCallGraph::SCC &scc : ref_scc) {

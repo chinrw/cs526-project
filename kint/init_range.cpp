@@ -2,6 +2,7 @@
 #include "range.h"
 
 #include "llvm/IR/ConstantRange.h"
+#include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/InstrTypes.h>
@@ -45,7 +46,7 @@ void KintRangeAnalysisPass::initFunctionReturn(Module &M) {
 
         for (auto &A : F.args()) {
           if (A.getType()->isIntegerTy()) {
-						// TODO taint source check
+            // TODO taint source check
           }
         }
       }
@@ -123,6 +124,12 @@ void KintRangeAnalysisPass::initGlobalVariables(Module &M) {
 }
 
 void KintRangeAnalysisPass::initRange(Module &M) {
+
+  for (auto &F : M) {
+		outs() << "initRange: " << F.getName() << "\n";
+    auto taintSources = getTaintSource(F);
+    markSinkedFuncs(F);
+  }
 
   // init global variables
   this->initGlobalVariables(M);

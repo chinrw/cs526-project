@@ -52,6 +52,9 @@ private:
   void initRange(Module &M);
   void funcSinkCheck(Function &F);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
+	void markSinkedFuncs(Function &F);
+	std::vector<CallInst *> getTaintSource(Function &F);
+
   KintConstantRange getRange(Value *var, RangeMap &rangeMap);
   KintConstantRange handleCallInst(CallInst *operand, RangeMap &globalRangeMap,
                                  Instruction &I);
@@ -61,6 +64,7 @@ private:
                                   Instruction &I);
   KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, 
                                   Instruction &I);
+
   KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap,
                                   Instruction &I);
   KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap,
