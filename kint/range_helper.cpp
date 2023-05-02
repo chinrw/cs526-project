@@ -11,6 +11,10 @@
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Argument.h"
+#include <llvm-16/llvm/ADT/APInt.h>
+#include <llvm-16/llvm/IR/ConstantRange.h>
+#include <llvm-16/llvm/IR/Instructions.h>
+#include <llvm-16/llvm/Support/Casting.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/GlobalAlias.h>
@@ -75,12 +79,64 @@ using namespace llvm;
     }
     return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
  }
- KintConstantRange KintRangeAnalysisPass::handleStoreInst(StoreInst *operand, RangeMap &globalRangeMap, Instruction &I) {
-    
+
+ KintConstantRange KintRangeAnalysisPass::handleStoreInst(StoreInst *store, RangeMap &globalRangeMap, Instruction &I) {
+    // Check the range being stored is of the interger type
+    KintRangeAnalysisPass rangeAnalysis;
+    const auto val = store->getValueOperand();
+    const auto ptr = store->getPointerOperand();
+
+    if(!val->getType()->isIntegerTy()) {
+        return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
+    }
+
+    auto valRange = getRange(val, globalRangeMap);
+    if(const auto GV = dyn_cast<GlobalVariable>(ptr)) {
+        globalValueRangeMap[GV] = globalValueRangeMap[GV].unionWith(valRange);
+    } else if (const auto gep = dyn_cast<GetElementPtrInst>(ptr)){
+        auto gepAddr = gep->getPointerOperand(); 
+
+        if (auto *gepGV = dyn_cast<GlobalVariable>(gepAddr)) {
+            auto itGepGV = globalRangeMap.find(gepGV);
+            if(gep->getNumIndices() == 2 && itGepGV != globalRangeMap.end()) {
+                auto index = gep->getOperand(2);
+                auto itIndex = globalRangeMap.find(index);
+                if(itIndex != globalRangeMap.end()) {
+                    auto indexRange = itIndex->second;
+                    auto arrayRange = itGepGV->second;
+                    auto arraySize = arrayRange.getUnsignedMax().getLimitedValue();
+                    auto indexSize = indexRange.getUnsignedMax().getLimitedValue();
+
+                    if(indexSize >= arraySize) {
+                        rangeAnalysis.gepOutOfRange.insert(gep);
+                    }
+
+                    for(uint64_t i = indexRange.getLower().getLimitedValue(); i < std::min(arraySize, indexSize); i++) {
+                        auto newIndexRange = ConstantRange(APInt(32, i));
+                        auto newArrayRange = itGepGV->second;
+                        auto newRange = newArrayRange.unionWith(newIndexRange);
+                        globalRangeMap.emplace(gep, newRange);
+                    }
+                }
+            }
+        }
+    }
+
+    return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
  }
- KintConstantRange KintRangeAnalysisPass::handleReturnInst(ReturnInst *operand, RangeMap &globalRangeMap, Instruction &I) {
-    
+
+ KintConstantRange KintRangeAnalysisPass::handleReturnInst(ReturnInst *ret, RangeMap &globalRangeMap, Instruction &I) {
+    Function *F = ret->getFunction();
+    if(F->getReturnType()->isIntegerTy()) {
+        auto retValue = ret->getReturnValue();
+        if(retValue) {
+            auto retValueRange = getRange(retValue, globalRangeMap);
+            functionReturnRangeMap[F] = functionReturnRangeMap[F].unionWith(retValueRange);
+        }
+    }
+    return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
  }
+ 
  KintConstantRange KintRangeAnalysisPass::handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, Instruction &I) {
     outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
     // Add a full range for the current instruction to the global range map
