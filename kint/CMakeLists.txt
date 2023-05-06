@@ -56,6 +56,7 @@ add_llvm_library(
   kint_function.h
   kint_module.cpp
   kint_module.h
+  smt_solving.cpp
   range.h
   range.cpp
   kint_constant_range.h
@@ -64,8 +65,8 @@ add_llvm_library(
   # List your source files here.
   check_insertion.cpp
   check_insertion.h
-  constraint.cpp
-  constraint.h
+  # constraint.cpp
+  # constraint.h
   tainted.cpp
   DEPENDS
   z3-repo

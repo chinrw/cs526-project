@@ -26,9 +26,13 @@
 
 using namespace llvm;
 
+ KintConstantRange KintRangeAnalysisPass::getRangeByBB(Value *var, const BasicBlock *BB) {
+    return getRange(var, functionsToRangeInfo[BB->getParent()]);
+ }
  KintConstantRange KintRangeAnalysisPass::getRange(Value *var, RangeMap &globalRangeMap) {
-    if (globalRangeMap.count(var)) {
-        return globalRangeMap[var];
+    auto itVar = globalRangeMap.find(const_cast<Value *>(var));
+    if (itVar != globalRangeMap.end()) {
+        return globalRangeMap.at(var);
     }
     // if the var is a constant integer
     if(auto *constInt = dyn_cast<ConstantInt>(var)) {
@@ -40,7 +44,7 @@ using namespace llvm;
         }
     }
     // if the var type is unknown
-    errs() << "Uknown Operand Type: " << *var << "\n";
+    errs() << "Unknown Operand Type: " << *var << "\n";
     return KintConstantRange(var->getType()->getIntegerBitWidth(), true);
  }
  

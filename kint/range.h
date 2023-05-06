@@ -1,6 +1,11 @@
 #ifndef LLVM_RANGE_H
 #define LLVM_RANGE_H
 #include "llvm/ADT/MapVector.h"
+#include <llvm-16/llvm/ADT/SetVector.h>
+#include <llvm-16/llvm/IR/BasicBlock.h>
+#include <llvm-16/llvm/IR/Value.h>
+#include <llvm/IR/Function.h>
+#include <optional>
 #include <vector>
 #include "llvm/ADT/MapVector.h"
 #include <vector>
@@ -25,6 +30,7 @@
 #include <set>
 
 #include "kint_constant_range.h"
+#include <z3++.h>
 
 namespace llvm {
 
@@ -48,6 +54,12 @@ private:
   SetVector<Function *> taintedFunctions;
   SetVector<StringRef> sinkedFunctions;
   MapVector<Function*, std::vector<CallInst*>> functionsToTaintSources;
+  std::map<const Function*, RangeMap> functionsToRangeInfo;
+  DenseMap<BasicBlock*, SetVector<BasicBlock*>> backEdges;
+  std::map<BasicBlock*, SmallVector<BasicBlock*, 2>> pathMap;
+  std::optional<z3::solver> Solver;
+  DenseMap<Value*, std::optional<z3::expr>> argValuetoSymbolicVar;
+  
 
   void initGlobalVariables(Module &M);
   void initFunctionReturn(Module &M);
@@ -55,9 +67,13 @@ private:
   void funcSinkCheck(Function &F);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
 	void markSinkedFuncs(Function &F);
+  void smtSolver(Module &M);
+  void pathSolver(BasicBlock *curBB, BasicBlock *predBB);
+  bool addRangeConstaints(const KintConstantRange &range, const z3::expr &bv);
 	std::vector<CallInst *> getTaintSource(Function &F);
 
   KintConstantRange getRange(Value *var, RangeMap &rangeMap);
+  KintConstantRange getRangeByBB(Value *var, const BasicBlock *BB);
   KintConstantRange handleCallInst(CallInst *operand, RangeMap &globalRangeMap,
                                  Instruction &I);
   KintConstantRange handleStoreInst(StoreInst *operand, RangeMap &globalRangeMap,
