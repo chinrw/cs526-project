@@ -65,8 +65,8 @@ add_llvm_library(
   # List your source files here.
   check_insertion.cpp
   check_insertion.h
-  constraint.cpp
-  constraint.h
+  # constraint.cpp
+  # constraint.h
   tainted.cpp
   DEPENDS
   z3-repo
