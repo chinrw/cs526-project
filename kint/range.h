@@ -54,11 +54,20 @@ private:
   SetVector<Function *> taintedFunctions;
   SetVector<StringRef> sinkedFunctions;
   MapVector<Function*, std::vector<CallInst*>> functionsToTaintSources;
-  std::map<const Function*, RangeMap> functionsToRangeInfo;
   DenseMap<BasicBlock*, SetVector<BasicBlock*>> backEdges;
+  DenseMap<Value*, std::optional<z3::expr>> argValuetoSymbolicVar;
+  std::map<const Function*, RangeMap> functionsToRangeInfo;
   std::map<BasicBlock*, SmallVector<BasicBlock*, 2>> pathMap;
   std::optional<z3::solver> Solver;
-  DenseMap<Value*, std::optional<z3::expr>> argValuetoSymbolicVar;
+  std::map<ICmpInst*, bool> impossibleBranches;
+  z3::expr ValuetoSymbolicVar(Value *arg) {
+    if (auto it = argValuetoSymbolicVar.find(arg); it != argValuetoSymbolicVar.end()) {
+        return it->second.value();
+    }
+    auto lconst = dyn_cast<ConstantInt>(arg);
+    return Solver.value().ctx().bv_val(lconst->getZExtValue(), lconst->getType()->getIntegerBitWidth());
+}
+
   
 
   void initGlobalVariables(Module &M);

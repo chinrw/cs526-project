@@ -1,5 +1,6 @@
 #include "kint_constant_range.h"
 #include "range.h"
+#include "z3++.h"
 #include <cstddef>
 #include <cstdint>
 #include "llvm/IR/ConstantRange.h"
