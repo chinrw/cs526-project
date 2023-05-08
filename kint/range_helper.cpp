@@ -11,10 +11,10 @@
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Argument.h"
-#include <llvm-16/llvm/ADT/APInt.h>
-#include <llvm-16/llvm/IR/ConstantRange.h>
-#include <llvm-16/llvm/IR/Instructions.h>
-#include <llvm-16/llvm/Support/Casting.h>
+#include <llvm/ADT/APInt.h>
+#include <llvm/IR/ConstantRange.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/GlobalAlias.h>
