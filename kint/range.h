@@ -54,7 +54,7 @@ private:
   DenseMap<BasicBlock*, SetVector<BasicBlock*>> backEdges;
   DenseMap<Value*, std::optional<z3::expr>> argValuetoSymbolicVar;
   std::map<const Function*, RangeMap> functionsToRangeInfo;
-  std::map<BasicBlock*, SmallVector<BasicBlock*, 2>> pathMap;
+  std::map<BasicBlock*, SmallVector<BasicBlock*, 2>> BBpathMap;
   std::optional<z3::solver> Solver;
   std::map<ICmpInst*, bool> impossibleBranches;
   z3::expr ValuetoSymbolicVar(Value *arg) {
