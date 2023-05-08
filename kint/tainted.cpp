@@ -6,6 +6,8 @@
 #include "llvm/Demangle/Demangle.h"
 #include <cstdint>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/Support/raw_ostream.h>
 using namespace llvm;
@@ -39,11 +41,18 @@ vector<Function *> getSinkFuncs(Instruction *I) {
   return ret;
 }
 
-void setMetaDataSink(Instruction *I, const StringRef sinkName) {
+static void setMetaDataSink(Instruction *I, const StringRef sinkName) {
   // TODO: check if the instruction already has the metadata
   auto &ctx = I->getContext();
   // set the metadata to the instruction as SINK_FUNC
   I->setMetadata(IR_SINK_FUNC, MDNode::get(ctx, MDString::get(ctx, sinkName)));
+}
+
+static void setMetadataTaint(Instruction *I, const StringRef taintName) {
+  auto &ctx = I->getContext();
+  // set the metadata to the instruction as TAINT_FUNC
+  I->setMetadata(IR_TAINT_FUNC,
+                 MDNode::get(ctx, MDString::get(ctx, taintName)));
 }
 
 void KintRangeAnalysisPass::markSinkedFuncs(Function &F) {
@@ -75,7 +84,7 @@ void KintRangeAnalysisPass::markSinkedFuncs(Function &F) {
   // TODO:  check if the function is a taint source
 }
 
-bool isTaintSource(const StringRef funcName) {
+bool KintRangeAnalysisPass::isTaintSource(const StringRef funcName) {
   const auto demangled_name =
       StringRef(itaniumDemangle(funcName.data(), nullptr, nullptr, nullptr));
 
@@ -111,10 +120,10 @@ vector<CallInst *> KintRangeAnalysisPass::getTaintSource(Function &F) {
   // Check if this function is the taint source.
   const auto functionName = F.getName();
   if (isTaintSource(functionName)) {
-		outs() << "Taint Analysis -> Found taint source: " << functionName << "\n";
+    outs() << "Taint Analysis -> Found taint source: " << functionName << "\n";
     for (auto &arg : F.args()) {
 
-      // TODO: check if have a better way to get the taint source 
+      // TODO: check if have a better way to get the taint source
       auto callName = functionName.str() + IR_TAINT_FUNC_ARG.str() +
                       to_string(arg.getArgNo());
 
@@ -129,4 +138,64 @@ vector<CallInst *> KintRangeAnalysisPass::getTaintSource(Function &F) {
     }
   }
   return taintSources;
+}
+
+bool KintRangeAnalysisPass::sinkedReachable(Instruction *I) {
+  if (nullptr == I) {
+    return false;
+  } else if (I->getMetadata(IR_SINK_FUNC)) {
+    for (auto f : getSinkFuncs(I)) {
+      taintedFunctions.insert(f);
+    }
+    return true;
+  }
+
+  bool sinked = false;
+
+  if (auto SI = dyn_cast<StoreInst>(I)) {
+    auto p = SI->getPointerOperand();
+    if (auto GV = dyn_cast<GlobalVariable>(p)) {
+      for (auto U : GV->users()) {
+        if (auto UI = dyn_cast<Instruction>(U)) {
+          if (U != SI) {
+            sinked = sinked || sinkedReachable(UI);
+          }
+        }
+      }
+      if (sinked) {
+        markSinkedFuncs(*I->getFunction());
+        GV->setMetadata(IR_SINK_FUNC, I->getMetadata(IR_SINK_FUNC));
+        return true;
+      }
+    }
+  } else {
+    if (auto CI = dyn_cast<CallInst>(I)) {
+      if (auto F = CI->getCalledFunction()) {
+        if (!F->isDeclaration()) {
+          // TODO add a check for boradcast
+          sinked = true;
+          taintedFunctions.insert(F);
+        }
+      }
+    }
+  }
+
+  for (auto U : I->users()) {
+    if (auto UI = dyn_cast<Instruction>(U)) {
+      sinked = sinked || sinkedReachable(UI);
+    }
+  }
+
+  if (sinked) {
+    setMetadataTaint(I, "");
+    if (auto CI = dyn_cast<CallInst>(I)) {
+      if (auto F = CI->getCalledFunction()) {
+        if (!F->getReturnType()->isVoidTy()) {
+          taintedFunctions.insert(F);
+        }
+      }
+    }
+    return true;
+  }
+  return false;
 }

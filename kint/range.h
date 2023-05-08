@@ -66,7 +66,10 @@ private:
   void smtSolver(Module &M);
   void pathSolver(BasicBlock *curBB, BasicBlock *predBB);
   bool addRangeConstaints(const KintConstantRange &range, const z3::expr &bv);
-  std::vector<CallInst *> getTaintSource(Function &F);
+	bool sinkedReachable(Instruction *I);
+	bool isTaintSource(const StringRef funcName);
+
+	std::vector<CallInst *> getTaintSource(Function &F);
 
   KintConstantRange getRange(Value *var, RangeMap &rangeMap);
   KintConstantRange getRangeByBB(Value *var, const BasicBlock *BB);
