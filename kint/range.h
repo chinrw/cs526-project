@@ -4,8 +4,6 @@
 #include <llvm/IR/Function.h>
 #include <optional>
 #include <vector>
-#include "llvm/ADT/MapVector.h"
-#include <vector>
 #define DEBUG_TYPE "range"
 
 #include <llvm/ADT/SetVector.h>
@@ -50,52 +48,43 @@ private:
   DenseMap<const Function *, KintConstantRange> functionReturnRangeMap;
   SetVector<Function *> taintedFunctions;
   SetVector<StringRef> sinkedFunctions;
-  MapVector<Function*, std::vector<CallInst*>> functionsToTaintSources;
-  DenseMap<BasicBlock*, SetVector<BasicBlock*>> backEdges;
-  DenseMap<Value*, std::optional<z3::expr>> argValuetoSymbolicVar;
-  std::map<const Function*, RangeMap> functionsToRangeInfo;
-  std::map<BasicBlock*, SmallVector<BasicBlock*, 2>> BBpathMap;
+  MapVector<Function *, std::vector<CallInst *>> functionsToTaintSources;
+  DenseMap<BasicBlock *, SetVector<BasicBlock *>> backEdges;
+  DenseMap<Value *, std::optional<z3::expr>> argValuetoSymbolicVar;
+  std::map<const Function *, RangeMap> functionsToRangeInfo;
+  std::map<BasicBlock *, SmallVector<BasicBlock *, 2>> BBpathMap;
   std::optional<z3::solver> Solver;
-  std::map<ICmpInst*, bool> impossibleBranches;
-  z3::expr ValuetoSymbolicVar(Value *arg) {
-    if (auto it = argValuetoSymbolicVar.find(arg); it != argValuetoSymbolicVar.end()) {
-        return it->second.value();
-    }
-    auto lconst = dyn_cast<ConstantInt>(arg);
-    return Solver.value().ctx().bv_val(lconst->getZExtValue(), lconst->getType()->getIntegerBitWidth());
-}
-
-  
+  std::map<ICmpInst *, bool> impossibleBranches;
+  z3::expr ValuetoSymbolicVar(Value *arg);
 
   void initGlobalVariables(Module &M);
   void initFunctionReturn(Module &M);
   void initRange(Module &M);
   void funcSinkCheck(Function &F);
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
-	void markSinkedFuncs(Function &F);
+  void markSinkedFuncs(Function &F);
   void smtSolver(Module &M);
   void pathSolver(BasicBlock *curBB, BasicBlock *predBB);
   bool addRangeConstaints(const KintConstantRange &range, const z3::expr &bv);
-	std::vector<CallInst *> getTaintSource(Function &F);
+  std::vector<CallInst *> getTaintSource(Function &F);
 
   KintConstantRange getRange(Value *var, RangeMap &rangeMap);
   KintConstantRange getRangeByBB(Value *var, const BasicBlock *BB);
   KintConstantRange handleCallInst(CallInst *operand, RangeMap &globalRangeMap,
-                                 Instruction &I);
-  KintConstantRange handleStoreInst(StoreInst *operand, RangeMap &globalRangeMap,
-                                  Instruction &I);
-  KintConstantRange handleReturnInst(ReturnInst *operand, RangeMap &globalRangeMap, 
-                                  Instruction &I);
-  KintConstantRange handleSelectInst(SelectInst *operand, RangeMap &globalRangeMap, 
-                                  Instruction &I);
+                                   Instruction &I);
+  KintConstantRange handleStoreInst(StoreInst *operand,
+                                    RangeMap &globalRangeMap, Instruction &I);
+  KintConstantRange handleReturnInst(ReturnInst *operand,
+                                     RangeMap &globalRangeMap, Instruction &I);
+  KintConstantRange handleSelectInst(SelectInst *operand,
+                                     RangeMap &globalRangeMap, Instruction &I);
 
   KintConstantRange handleCastInst(CastInst *operand, RangeMap &globalRangeMap,
-                                  Instruction &I);
+                                   Instruction &I);
   KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap,
                                   Instruction &I);
   KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap,
-                                 Instruction &I);
-  
+                                   Instruction &I);
 };
 
 PassPluginLibraryInfo getKintRangeAnalysisPassPluginInfo();
