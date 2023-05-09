@@ -1,9 +1,10 @@
 #include "constraint.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/Operator.h"
+#include "llvm/IR/Type.h"
 #include "llvm/Support/raw_ostream.h"
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Operator.h>
-#include <llvm/IR/Type.h>
 #include <string>
+#include <algorithm>
 
 using namespace llvm;
 
@@ -28,10 +29,10 @@ z3::expr ValueConstraint::SymbolFor(const Value *V) {
   return CTX.bv_const(PtrToString(V), DL.getTypeSizeInBits(V->getType()));
 }
 
-z3::expr PathConstraint::Get(const BasicBlock *BB) {}
-
 z3::expr ValueConstraint::Get(const Value *V) {
   // Precondition: Type of V isAnalyzable, i.e. no floats, vectors, etc.
+  // todo cache here
+
   if (auto C = dyn_cast<Constant>(V)) {
     return GetConstant(C);
   } else if (auto BO = dyn_cast<BinaryOperator>(V)) {
@@ -54,12 +55,11 @@ z3::expr ValueConstraint::Get(const Value *V) {
     return GetIntToPtrInst(ITPI);
   } else if (auto PTII = dyn_cast<PtrToIntInst>(V)) {
     return GetPtrToIntInst(PTII);
-  } else {
-    // fallback, i.e. load, extractvalue, etc.
-    errs() << "Unhandled Operator " << V->getNameOrAsOperand() << ", " << __FILE__ << ":"
-           << __LINE__ << "\n";
-    return SymbolFor(V);
   }
+  // fallback, i.e. load, extractvalue, etc.
+  errs() << "Unhandled Value " << V->getNameOrAsOperand() << ", " << __FILE__
+         << ":" << __LINE__ << "\n";
+  return SymbolFor(V);
 }
 
 z3::expr ValueConstraint::GetTruncInst(const TruncInst *TI) {
@@ -94,10 +94,11 @@ z3::expr ValueConstraint::GetSelectInst(const SelectInst *SI) {
 z3::expr ValueConstraint::GetBitCastInst(const BitCastInst *BCI) {
   // May be float
   auto Src = BCI->getOperand(0);
-  return  isAnalyzable(Src) ? Get(Src) : SymbolFor(Src);
+  return isAnalyzable(Src) ? Get(Src) : SymbolFor(Src);
 }
 
-static z3::expr SResize(const z3::expr& BV, unsigned SrcWidth, unsigned DestWidth) {
+static z3::expr SResize(const z3::expr &BV, unsigned SrcWidth,
+                        unsigned DestWidth) {
   if (SrcWidth == DestWidth) {
     return BV;
   } else if (SrcWidth < DestWidth) {
@@ -133,11 +134,12 @@ z3::expr ValueConstraint::GetGEPOperator(const GEPOperator *GEPO) {
     errs() << "CollectOffset failed! " << __FILE__ << ":" << __LINE__ << "\n";
     return SymbolFor(GEPO);
   }
-  auto Result = ConvertInt(CTX, ConstantOffset);
+  auto TotalOffset = ConvertInt(CTX, ConstantOffset);
   for (const auto &[V, Offset] : VariableOffsets) {
-    Result = Result + ConvertInt(CTX, Offset) * Get(V);
+    TotalOffset = TotalOffset + ConvertInt(CTX, Offset) * Get(V);
   }
-  return Result;
+  auto Base = Get(GEPO->getPointerOperand());
+  return Base + TotalOffset;
 }
 
 z3::expr ValueConstraint::GetICmpInst(const ICmpInst *ICI) {
@@ -217,4 +219,103 @@ z3::expr ValueConstraint::GetConstant(const Constant *C) {
   }
   // Not sure why other constexprs are ignored
   return SymbolFor(C);
+}
+
+//==================== PathConstraint starts here ====================
+template <typename T>
+static bool contains(const SmallVectorImpl<T> &Vec, T Elem) {
+  return std::find(Vec.begin(), Vec.end(), Elem) != Vec.end();
+}
+
+z3::expr PathConstraint::Get(const BasicBlock *BB) {
+  // todo cache here
+  if (BB->isEntryBlock()) {
+    return CTX.bool_val(true);
+  }
+
+  // The dominator tree stuff in the original KINT code is never used.
+  auto Union = CTX.bool_val(false);
+
+  auto PredBegin = pred_begin(BB);
+  auto PredEnd = pred_end(BB);
+  for (auto Pred = PredBegin; Pred != PredEnd; ++Pred) {
+    // KINT's PathGen 'unrolls' each loop once by dropping backedges.
+    if (contains(BackEdges, {*Pred, BB})) {
+      continue;
+    }
+
+    auto EdgeConstraint = EdgeCondition(BB, *Pred);
+    auto PhiConstraint = PhiAssignment(BB, *Pred);
+    auto PredConstraint = Get(*Pred);
+
+    Union = Union || (EdgeConstraint && PhiConstraint && PredConstraint);
+  }
+
+  return Union;
+}
+
+z3::expr PathConstraint::EdgeCondition(const BasicBlock *BB,
+                                       const BasicBlock *Pred) {
+  auto Term = Pred->getTerminator();
+
+  if (isa<IndirectBrInst>(Term)) {
+    return CTX.bool_val(true);
+  } else if (isa<InvokeInst>(Term)) {
+    return CTX.bool_val(true);
+  } else if (auto BI = dyn_cast<BranchInst>(Term)) {
+    if (!BI->isConditional()) {
+      return CTX.bool_val(true);
+    }
+    // check which case the edge is on
+    auto Cond = VC.Get((BI->getCondition()));
+
+    return BI->getSuccessor(0) == BB ? Cond : !Cond;
+
+  } else if (auto SI = dyn_cast<SwitchInst>(Term)) {
+    auto NonDefault = CTX.bool_val(false);
+
+    auto Cond = VC.Get((SI->getCondition()));
+    for (auto C : SI->cases()) {
+      if (C.getCaseSuccessor() != BB) {
+        continue;
+      }
+      auto CaseValue = VC.Get(C.getCaseValue());
+      NonDefault = NonDefault || (Cond == CaseValue);
+    }
+
+    if (SI->getDefaultDest() != BB) {
+      return NonDefault;
+    }
+
+    auto DefaultCase = CTX.bool_val(true);
+    for (auto C : SI->cases()) {
+      auto CaseValue = VC.Get(C.getCaseValue());
+      DefaultCase = DefaultCase && (Cond != CaseValue);
+    }
+    return NonDefault || DefaultCase;
+  }
+  // ignore other terminators, i.e. ret, indirectbr, exception handling, etc.
+  errs() << "Unhandled Terminator " << Term->getOpcodeName() << ", " << __FILE__
+         << ":" << __LINE__ << "\n";
+  return CTX.bool_val(false);
+}
+
+z3::expr PathConstraint::PhiAssignment(const BasicBlock *BB,
+                                       const BasicBlock *Pred) {
+  auto Assignments = CTX.bool_val(true);
+
+  for (auto &I : *BB) {
+    auto PN = dyn_cast<PHINode>(&I);
+    if (!PN) {
+      continue;
+    }
+    Value *V = PN->getIncomingValueForBlock(Pred);
+    if (isa<UndefValue>(V) || !VC.isAnalyzable(V)) {
+      continue;
+    }
+    // generate symbol for phi node value
+    auto Phi = VC.Get(PN);
+    Assignments = Assignments && (Phi == VC.Get(V));
+  }
+  return Assignments;
 }

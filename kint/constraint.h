@@ -9,6 +9,13 @@
 #include "llvm/IR/Value.h"
 
 class ValueConstraint {
+public:
+  ValueConstraint(z3::context &CTX, const llvm::DataLayout &DL)
+      : CTX(CTX), DL(DL) {}
+  z3::expr Get(const llvm::Value *V);
+  bool isAnalyzable(const llvm::Value *V);
+
+private:
   z3::context &CTX;
   const llvm::DataLayout &DL;
   z3::expr SymbolFor(const llvm::Value *V);
@@ -23,22 +30,26 @@ class ValueConstraint {
   z3::expr GetBitCastInst(const llvm::BitCastInst *BCI);
   z3::expr GetIntToPtrInst(const llvm::IntToPtrInst *ITPI);
   z3::expr GetPtrToIntInst(const llvm::PtrToIntInst *PTII);
-  
-public:
-  ValueConstraint(z3::context &CTX, const llvm::DataLayout &DL)
-      : CTX(CTX), DL(DL) {}
-  z3::expr Get(const llvm::Value *V);
-  bool isAnalyzable(const llvm::Value *V);
 };
 
 class PathConstraint {
-  z3::context &CTX;
-  const ValueConstraint &VC;
-
 public:
-  PathConstraint(z3::context &CTX, const ValueConstraint &VC)
-      : CTX(CTX), VC(VC){};
+  typedef std::pair<const llvm::BasicBlock *, const llvm::BasicBlock *> Edge;
+  typedef llvm::SmallVectorImpl<Edge> EdgeVector;
+
+  PathConstraint(z3::context &CTX, ValueConstraint &VC, EdgeVector &BackEdges)
+      : CTX(CTX), VC(VC), BackEdges(BackEdges){};
   z3::expr Get(const llvm::BasicBlock *BB);
+
+private:
+  z3::context &CTX;
+  ValueConstraint &VC;
+  const EdgeVector &BackEdges;  // How many loops can a function have?
+  z3::expr EdgeCondition(const llvm::BasicBlock *BB,
+                         const llvm::BasicBlock *Pred);
+  z3::expr PhiAssignment(const llvm::BasicBlock *BB,
+                         const llvm::BasicBlock *Pred);
+  Edge e;
 };
 
 #endif

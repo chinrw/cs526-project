@@ -1,4 +1,5 @@
 #include "check_insertion.h"
+#include "smt_query.h"
 #include "kint_function.h"
 #include "kint_module.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -35,6 +36,15 @@ void registerKintPass(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (Name == "check-insertion-pass") {
           FPM.addPass(CheckInsertionPass());
+          return true;
+        }
+        return false;
+      });
+  PB.registerPipelineParsingCallback(
+      [](StringRef Name, FunctionPassManager &FPM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (Name == "smt-query-pass") {
+          FPM.addPass(SMTQueryPass());
           return true;
         }
         return false;
