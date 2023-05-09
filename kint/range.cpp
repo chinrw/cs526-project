@@ -1,4 +1,5 @@
 #include "range.h"
+#include "kint_constant_range.h"
 
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/ConstantRange.h"
@@ -15,53 +16,9 @@
 
 using namespace llvm;
 
-// compute the range for a given BinaryOperator instruction
-KintConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
-                                             const RangeMap &globalRangeMap) {
-  // FIXME: this is a hack to get the range for the operands
-  KintConstantRange lhsRange =
-      KintConstantRange(globalRangeMap.at(BO->getOperand(0)));
-  KintConstantRange rhsRange =
-      KintConstantRange(globalRangeMap.at(BO->getOperand(1)));
-
-  switch (BO->getOpcode()) {
-  case Instruction::Add:
-    return lhsRange.add(rhsRange);
-  case Instruction::Sub:
-    return lhsRange.sub(rhsRange);
-  case Instruction::Mul:
-    return lhsRange.multiply(rhsRange);
-  case Instruction::SDiv:
-    return lhsRange.sdiv(rhsRange);
-  case Instruction::UDiv:
-    return lhsRange.udiv(rhsRange);
-  case Instruction::Shl:
-    return lhsRange.shl(rhsRange);
-  case Instruction::LShr:
-    return lhsRange.lshr(rhsRange);
-  case Instruction::AShr:
-    return lhsRange.ashr(rhsRange);
-  case Instruction::SRem:
-    return lhsRange.srem(rhsRange);
-  case Instruction::URem:
-    return lhsRange.urem(rhsRange);
-  case Instruction::And:
-    return lhsRange.binaryAnd(rhsRange);
-  case Instruction::Or:
-    return lhsRange.binaryOr(rhsRange);
-  case Instruction::Xor:
-    return lhsRange.binaryXor(rhsRange);
-  default:
-    // Handle other instructions and cases as needed.
-    errs() << "Unhandled binary operator: " << BO->getOpcodeName() << "\n";
-    return rhsRange;
-  }
-}
-
-bool KintRangeAnalysisPass::analyzeFunction(Function &F,
+void KintRangeAnalysisPass::analyzeFunction(Function &F,
                                             RangeMap &globalRangeMap) {
   // TODO add a function to check if the globalRangeMap has converged
-  bool functionConverged = false;
   for (BasicBlock &BB : F) {
     auto &F = *BB.getParent();
     // FIXME unused variable
@@ -77,26 +34,14 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
           globalRangeMap.at(&I) = this->handleCallInst(call, globalRangeMap, I);
         }
       } else if (auto *store = dyn_cast_or_null<StoreInst>(&I)) {
-        globalRangeMap.at(&I) = this->handleStoreInst(store, globalRangeMap, I);
+        this->handleStoreInst(store, globalRangeMap, I);
       } else if (auto *ret = dyn_cast_or_null<ReturnInst>(&I)) {
-        globalRangeMap.at(&I) = this->handleReturnInst(ret, globalRangeMap, I);
+        this->handleReturnInst(ret, globalRangeMap, I);
       }
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
-        // outs() << "Found binary operator: " << operand->getOpcodeName() <<
-        // "\n";
-        // // FIXME this has the wrong key for the map
-        // globalRangeMap.emplace(
-        //     operand->getOperand(0),
-        //     ConstantRange::getFull(
-        //         operand->getOperand(0)->getType()->getIntegerBitWidth()));
-        // globalRangeMap.emplace(
-        //     operand->getOperand(1),
-        //     ConstantRange::getFull(
-        //         operand->getOperand(1)->getType()->getIntegerBitWidth()));
-
-        ConstantRange outputRange =
+        KintConstantRange outputRange =
             computeBinaryOperatorRange(operand, globalRangeMap);
-        globalRangeMap.at(&I) = outputRange;
+        globalRangeMap.emplace(&I, outputRange);
       } else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
         globalRangeMap.at(&I) =
             this->handleSelectInst(operand, globalRangeMap, I);
@@ -106,12 +51,10 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
       } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
         globalRangeMap.at(&I) = this->handlePHINode(operand, globalRangeMap, I);
       } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
-        globalRangeMap.at(&I) =
-            this->handleLoadInst(operand, globalRangeMap, I);
+        this->handleLoadInst(operand, globalRangeMap, I);
       }
     }
   }
-  return functionConverged;
 }
 
 void KintRangeAnalysisPass::printRanges() {

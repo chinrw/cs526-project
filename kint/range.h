@@ -48,7 +48,7 @@ private:
   DenseMap<const GlobalValue *, KintConstantRange> globalValueRangeMap;
   DenseMap<Function *, KintConstantRange> functionReturnRangeMap;
   SetVector<Function *> taintedFunctions;
-	SetVector<Function *> rangeAnalysisFunctions;
+  SetVector<Function *> rangeAnalysisFunctions;
   SetVector<StringRef> sinkedFunctions;
   MapVector<Function *, std::vector<CallInst *>> functionsToTaintSources;
   DenseMap<BasicBlock *, SetVector<BasicBlock *>> backEdges;
@@ -63,7 +63,7 @@ private:
   void initFunctionReturn(Module &M);
   void initRange(Module &M);
   void funcSinkCheck(Function &F);
-  bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
+  void analyzeFunction(Function &F, RangeMap &globalRangeMap);
   void markSinkedFuncs(Function &F);
   void smtSolver(Module &M);
   void backEdgeAnalysis(Function &F);
@@ -79,14 +79,16 @@ private:
   std::vector<CallInst *> getTaintSource(Function &F);
   std::string getBBLabel(BasicBlock *BB);
 
-  KintConstantRange getRange(Value *var, RangeMap &rangeMap);
+  KintConstantRange getRange(Value *var, const RangeMap &rangeMap);
   KintConstantRange getRangeByBB(Value *var, BasicBlock *BB);
   KintConstantRange handleCallInst(CallInst *operand, RangeMap &globalRangeMap,
                                    Instruction &I);
-  KintConstantRange handleStoreInst(StoreInst *operand,
-                                    RangeMap &globalRangeMap, Instruction &I);
-  KintConstantRange handleReturnInst(ReturnInst *operand,
-                                     RangeMap &globalRangeMap, Instruction &I);
+  void handleStoreInst(StoreInst *operand, RangeMap &globalRangeMap,
+                       Instruction &I);
+  KintConstantRange computeBinaryOperatorRange(BinaryOperator *&BO,
+                                               const RangeMap &globalRangeMap);
+  void handleReturnInst(ReturnInst *operand, RangeMap &globalRangeMap,
+                        Instruction &I);
   KintConstantRange handleSelectInst(SelectInst *operand,
                                      RangeMap &globalRangeMap, Instruction &I);
 
@@ -94,8 +96,8 @@ private:
                                    Instruction &I);
   KintConstantRange handlePHINode(PHINode *operand, RangeMap &globalRangeMap,
                                   Instruction &I);
-  KintConstantRange handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap,
-                                   Instruction &I);
+  void handleLoadInst(LoadInst *operand, RangeMap &globalRangeMap,
+                      Instruction &I);
 };
 
 PassPluginLibraryInfo getKintRangeAnalysisPassPluginInfo();

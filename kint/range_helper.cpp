@@ -147,8 +147,8 @@ KintConstantRange KintRangeAnalysisPass::getRangeByBB(Value *var,
   return getRange(var, functionsToRangeInfo[BB->getParent()][BB]);
 }
 
-KintConstantRange KintRangeAnalysisPass::getRange(Value *var,
-                                                  RangeMap &globalRangeMap) {
+KintConstantRange
+KintRangeAnalysisPass::getRange(Value *var, const RangeMap &globalRangeMap) {
   auto itVar = globalRangeMap.find(const_cast<Value *>(var));
   if (itVar != globalRangeMap.end()) {
     return globalRangeMap.at(var);
@@ -210,15 +210,16 @@ KintRangeAnalysisPass::handleCallInst(CallInst *call, RangeMap &globalRangeMap,
   return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
 }
 
-KintConstantRange KintRangeAnalysisPass::handleStoreInst(
-    StoreInst *store, RangeMap &globalRangeMap, Instruction &I) {
+void KintRangeAnalysisPass::handleStoreInst(StoreInst *store,
+                                            RangeMap &globalRangeMap,
+                                            Instruction &I) {
   // Check the range being stored is of the interger type
   KintRangeAnalysisPass rangeAnalysis;
   const auto val = store->getValueOperand();
   const auto ptr = store->getPointerOperand();
 
   if (!val->getType()->isIntegerTy()) {
-    return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
+    return;
   }
 
   auto valRange = getRange(val, globalRangeMap);
@@ -244,7 +245,7 @@ KintConstantRange KintRangeAnalysisPass::handleStoreInst(
 
           for (uint64_t i = indexRange.getLower().getLimitedValue();
                i < std::min(arraySize, indexSize); i++) {
-            auto newIndexRange = ConstantRange(APInt(32, i));
+            auto newIndexRange = KintConstantRange(APInt(32, i));
             auto newArrayRange = itGepGV->second;
             auto newRange = newArrayRange.unionWith(newIndexRange);
             globalRangeMap.emplace(gep, newRange);
@@ -253,24 +254,15 @@ KintConstantRange KintRangeAnalysisPass::handleStoreInst(
       }
     }
   }
-
-  return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
 }
 
-KintConstantRange KintRangeAnalysisPass::handleReturnInst(
-    ReturnInst *ret, RangeMap &globalRangeMap, Instruction &I) {
+void KintRangeAnalysisPass::handleReturnInst(ReturnInst *ret,
+                                             RangeMap &globalRangeMap,
+                                             Instruction &I) {
   Function *F = ret->getFunction();
-  // if (F->getReturnType()->isIntegerTy()) {
-  //   auto retValue = ret->getReturnValue();
-  //   if (retValue) {
-  //     auto retValueRange = getRange(retValue, globalRangeMap);
-  //     functionReturnRangeMap[F] =
-  //         functionReturnRangeMap[F].unionWith(retValueRange);
-  //   }
-  // }
-  // return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
   if (F->getReturnType()->isIntegerTy()) {
-   functionReturnRangeMap[F] = getRange(ret->getReturnValue(), globalRangeMap).unionWith(functionReturnRangeMap[F]);
+    functionReturnRangeMap[F] = getRange(ret->getReturnValue(), globalRangeMap)
+                                    .unionWith(functionReturnRangeMap[F]);
   }
 }
 
@@ -279,13 +271,13 @@ KintConstantRange KintRangeAnalysisPass::handleSelectInst(
   outs() << "Found select instruction: " << operand->getOpcodeName() << "\n";
   // Add a full range for the current instruction to the global range map
   globalRangeMap.emplace(
-      &I, ConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
+      &I, KintConstantRange::getFull(operand->getType()->getIntegerBitWidth()));
   // Get the true and false values from the SelectInst
-  ConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
-  ConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
+  KintConstantRange trueRange = globalRangeMap.at(operand->getTrueValue());
+  KintConstantRange falseRange = globalRangeMap.at(operand->getFalseValue());
   // Compute the new range by taking the union of the true and false value
   // ranges
-  ConstantRange outputRange = trueRange.unionWith(falseRange);
+  KintConstantRange outputRange = trueRange.unionWith(falseRange);
   // Update the global range map with the computed range
   return outputRange;
 }
@@ -293,15 +285,16 @@ KintConstantRange KintRangeAnalysisPass::handleSelectInst(
 KintConstantRange KintRangeAnalysisPass::handleCastInst(
     CastInst *operand, RangeMap &globalRangeMap, Instruction &I) {
   outs() << "Found cast instruction: " << operand->getOpcodeName() << "\n";
-  ConstantRange outputRange =
-      ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
+  KintConstantRange outputRange =
+      KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
   globalRangeMap.emplace(&I, outputRange);
   // Get the input operand of the cast instruction
   auto inp = operand->getOperand(0);
   // If the input operand is not an integer type, set the range to the full bit
   // width
   if (!inp->getType()->isIntegerTy()) {
-    outputRange = ConstantRange(operand->getType()->getIntegerBitWidth(), true);
+    outputRange =
+        KintConstantRange(operand->getType()->getIntegerBitWidth(), true);
   } else {
     // If the input is an integer type, compute the output range based on the
     // cast operation
@@ -333,14 +326,18 @@ KintConstantRange KintRangeAnalysisPass::handlePHINode(PHINode *operand,
                                                        RangeMap &globalRangeMap,
                                                        Instruction &I) {
   outs() << "Found phi node: " << operand->getOpcodeName() << "\n";
-  ConstantRange outputRange =
-      ConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
+  KintConstantRange outputRange =
+      KintConstantRange::getEmpty(operand->getType()->getIntegerBitWidth());
   globalRangeMap.emplace(operand, outputRange);
   // Iterate through the incoming values of the PHI node
   for (unsigned i = 0; i < operand->getNumIncomingValues(); i++) {
     // Get the range of the incoming value
-    ConstantRange incomingRange =
-        globalRangeMap.at(operand->getIncomingValue(i));
+    auto IB = operand->getIncomingBlock(i);
+    if (backEdges[I.getParent()].contains(IB)) {
+      continue;
+    }
+    auto IV = operand->getIncomingValue(i);
+    KintConstantRange incomingRange = getRangeByBB(IV, IB);
     // Union the incoming range with the PHI node range
     outputRange = outputRange.unionWith(incomingRange);
   }
@@ -348,12 +345,10 @@ KintConstantRange KintRangeAnalysisPass::handlePHINode(PHINode *operand,
   return outputRange;
 }
 
-KintConstantRange KintRangeAnalysisPass::handleLoadInst(
-    LoadInst *operand, RangeMap &globalRangeMap, Instruction &I) {
+void KintRangeAnalysisPass::handleLoadInst(LoadInst *operand,
+                                           RangeMap &globalRangeMap,
+                                           Instruction &I) {
   outs() << "Found load instruction: " << operand->getOpcodeName() << "\n";
-  ConstantRange outputRange =
-      ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
-  globalRangeMap.emplace(operand, outputRange);
   // Get the pointer operand of the load instruction
   auto ptrAddr = operand->getPointerOperand();
   // If the address is a GlobalVariable, it retrieves the range associated
@@ -361,7 +356,7 @@ KintConstantRange KintRangeAnalysisPass::handleLoadInst(
   if (auto *GV = dyn_cast<GlobalVariable>(ptrAddr)) {
     if (GV->hasInitializer()) {
       if (auto *CI = dyn_cast<ConstantInt>(GV->getInitializer())) {
-        outputRange = ConstantRange(CI->getValue());
+        globalRangeMap.emplace(&I, KintConstantRange(CI->getValue()));
       }
     }
   } else if (auto gep = dyn_cast<GetElementPtrInst>(ptrAddr)) {
@@ -409,15 +404,53 @@ KintConstantRange KintRangeAnalysisPass::handleLoadInst(
       //  and global map range is set to the full range.
       outs() << "WARNING: GEP operation was not successfully handled: " << *gep
              << "\n";
-      outputRange =
-          ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
     }
   } else {
     // If the address is not a GlobalVariable, a warning is printed,
     // and global map range is set to the full range.
     outs() << "WARNING: Unknown address to load: " << *ptrAddr << "\n";
-    outputRange =
-        ConstantRange::getFull(operand->getType()->getIntegerBitWidth());
   }
-  return outputRange;
+}
+
+// compute the range for a given BinaryOperator instruction
+KintConstantRange KintRangeAnalysisPass::computeBinaryOperatorRange(
+    BinaryOperator *&BO, const RangeMap &globalRangeMap) {
+  auto lhs = BO->getOperand(0);
+  auto rhs = BO->getOperand(1);
+
+  auto lhsRange = getRange(lhs, globalRangeMap);
+  auto rhsRange = getRange(rhs, globalRangeMap);
+
+  switch (BO->getOpcode()) {
+  case Instruction::Add:
+    return lhsRange.add(rhsRange);
+  case Instruction::Sub:
+    return lhsRange.sub(rhsRange);
+  case Instruction::Mul:
+    return lhsRange.multiply(rhsRange);
+  case Instruction::SDiv:
+    return lhsRange.sdiv(rhsRange);
+  case Instruction::UDiv:
+    return lhsRange.udiv(rhsRange);
+  case Instruction::Shl:
+    return lhsRange.shl(rhsRange);
+  case Instruction::LShr:
+    return lhsRange.lshr(rhsRange);
+  case Instruction::AShr:
+    return lhsRange.ashr(rhsRange);
+  case Instruction::SRem:
+    return lhsRange.srem(rhsRange);
+  case Instruction::URem:
+    return lhsRange.urem(rhsRange);
+  case Instruction::And:
+    return lhsRange.binaryAnd(rhsRange);
+  case Instruction::Or:
+    return lhsRange.binaryOr(rhsRange);
+  case Instruction::Xor:
+    return lhsRange.binaryXor(rhsRange);
+  default:
+    // Handle other instructions and cases as needed.
+    errs() << "Unhandled binary operator: " << BO->getOpcodeName() << "\n";
+    return rhsRange;
+  }
 }
