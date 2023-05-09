@@ -43,6 +43,78 @@ void __sink2(void *ptr, int a, int b) {
   printf("Modified data in __sink2: %d\n", *data + a + b);
 }
 
+void perform_sink_operations(void *mem, int index) {
+  __sink0(mem);
+
+  void *mem_int = malloc(sizeof(int));
+  memcpy(mem_int, &index, sizeof(int));
+  __sink1(mem_int, 5);
+
+  void *mem_int2 = malloc(sizeof(int));
+  memcpy(mem_int2, &index, sizeof(int));
+  __sink2(mem_int2, 3, 7);
+
+  free(mem_int);
+  free(mem_int2);
+}
+
+void perform_sink_operations_extended(void *mem, int index, int x, int y) {
+  __sink0(mem);
+
+  void *mem_int = malloc(sizeof(int));
+  memcpy(mem_int, &index, sizeof(int));
+  __sink1(mem_int, x);
+
+  void *mem_int2 = malloc(sizeof(int));
+  memcpy(mem_int2, &index, sizeof(int));
+  __sink2(mem_int2, x, y);
+
+  free(mem_int);
+  free(mem_int2);
+}
+
+void test_case_basic() {
+  char buffer[100];
+  int index;
+
+  printf("Enter a string: ");
+  fgets(buffer, sizeof(buffer), stdin);
+
+  printf("Enter an integer: ");
+  scanf("%d", &index);
+  getchar(); // Consume newline character
+
+  void *mem = malloc(256);
+  strcpy(mem, buffer);
+  perform_sink_operations(mem, index);
+
+  free(mem);
+  printf("\n");
+}
+
+void test_case_extended() {
+  char buffer[100];
+  int index, x, y;
+
+  printf("Enter a string: ");
+  fgets(buffer, sizeof(buffer), stdin);
+
+  printf("Enter an integer: ");
+  scanf("%d", &index);
+  getchar(); // Consume newline character
+
+  printf("Enter two more integers: ");
+  scanf("%d %d", &x, &y);
+  getchar(); // Consume newline character
+
+  void *mem = malloc(256);
+  strcpy(mem, buffer);
+  perform_sink_operations_extended(mem, index, x, y);
+
+  free(mem);
+  printf("\n");
+}
+
 int main(int argc, char *argv[]) {
   // use get user input
   printf("Hello\n");
@@ -77,6 +149,26 @@ int main(int argc, char *argv[]) {
   free(mem);
   free(mem_int);
   free(mem_int2);
+
+  int basic_test_cases, extended_test_cases;
+
+  printf("Enter the number of basic test cases: ");
+  scanf("%d", &basic_test_cases);
+  getchar(); // Consume newline character
+
+  for (int i = 0; i < basic_test_cases; i++) {
+    printf("Basic Test case %d\n", i + 1);
+    test_case_basic();
+  }
+
+  printf("Enter the number of extended test cases: ");
+  scanf("%d", &extended_test_cases);
+  getchar(); // Consume newline character
+
+  for (int i = 0; i < extended_test_cases; i++) {
+    printf("Extended Test case %d\n", i + 1);
+    test_case_extended();
+  }
 
   return EXIT_SUCCESS;
 }
