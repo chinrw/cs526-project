@@ -33,16 +33,16 @@ z3::expr KintRangeAnalysisPass::ValuetoSymbolicVar(Value *arg) {
 }
 
 void KintRangeAnalysisPass::backEdgeAnalysis(Function &F) {
-  for (auto & BBRef : F) {
+  for (auto &BBRef : F) {
     auto BB = &BBRef;
-    if(backEdges.count(BB) == 0) {
+    if (backEdges.count(BB) == 0) {
       backEdges[BB] = {};
-      std::vector<BasicBlock *> remoteSuccessors {BB};
+      std::vector<BasicBlock *> remoteSuccessors{BB};
       while (!remoteSuccessors.empty()) {
         auto currentSuccessors = remoteSuccessors.back();
         remoteSuccessors.pop_back();
-        for(auto successor : successors(currentSuccessors)) {
-          if(successor != BB && !backEdges[BB].contains(successor)) {
+        for (auto successor : successors(currentSuccessors)) {
+          if (successor != BB && !backEdges[BB].contains(successor)) {
             backEdges[BB].insert(successor);
             remoteSuccessors.push_back(successor);
           }

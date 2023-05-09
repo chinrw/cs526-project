@@ -63,51 +63,51 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
   // TODO add a function to check if the globalRangeMap has converged
   bool functionConverged = false;
   for (BasicBlock &BB : F) {
-      auto &F = *BB.getParent();
-      auto &sumRng = functionsToRangeInfo[&F][&BB];
+    auto &F = *BB.getParent();
+    // FIXME unused variable
+    auto &sumRng = functionsToRangeInfo[&F][&BB];
     for (Instruction &I : BB) {
-      auto getRng = [&globalRangeMap, this](auto var) 
-      {return getRange(var, globalRangeMap);};
+      // FIXME unused variable
+      auto getRng = [&globalRangeMap, this](auto var) {
+        return getRange(var, globalRangeMap);
+      };
       if (auto *call = dyn_cast_or_null<CallInst>(&I)) {
         auto itI = globalRangeMap.find(&I);
         if (itI != globalRangeMap.end()) {
           globalRangeMap.at(&I) = this->handleCallInst(call, globalRangeMap, I);
         }
       } else if (auto *store = dyn_cast_or_null<StoreInst>(&I)) {
-          globalRangeMap.at(&I) = 
-              this->handleStoreInst(store, globalRangeMap, I);
+        globalRangeMap.at(&I) = this->handleStoreInst(store, globalRangeMap, I);
       } else if (auto *ret = dyn_cast_or_null<ReturnInst>(&I)) {
-          globalRangeMap.at(&I) = 
-              this->handleReturnInst(ret, globalRangeMap, I);
+        globalRangeMap.at(&I) = this->handleReturnInst(ret, globalRangeMap, I);
       }
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
         // outs() << "Found binary operator: " << operand->getOpcodeName() <<
         // "\n";
-        // FIXME this has the wrong key for the map
-        globalRangeMap.emplace(
-            operand->getOperand(0),
-            ConstantRange::getFull(
-                operand->getOperand(0)->getType()->getIntegerBitWidth()));
-        globalRangeMap.emplace(
-            operand->getOperand(1),
-            ConstantRange::getFull(
-                operand->getOperand(1)->getType()->getIntegerBitWidth()));
+        // // FIXME this has the wrong key for the map
+        // globalRangeMap.emplace(
+        //     operand->getOperand(0),
+        //     ConstantRange::getFull(
+        //         operand->getOperand(0)->getType()->getIntegerBitWidth()));
+        // globalRangeMap.emplace(
+        //     operand->getOperand(1),
+        //     ConstantRange::getFull(
+        //         operand->getOperand(1)->getType()->getIntegerBitWidth()));
 
-        // ConstantRange outputRange =
-        //     computeBinaryOperatorRange(operand, globalRangeMap);
-        // globalRangeMap.at(&I) = outputRange;
+        ConstantRange outputRange =
+            computeBinaryOperatorRange(operand, globalRangeMap);
+        globalRangeMap.at(&I) = outputRange;
       } else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
         globalRangeMap.at(&I) =
             this->handleSelectInst(operand, globalRangeMap, I);
-        } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
-          globalRangeMap.at(&I) = this->handleCastInst(operand,
-          globalRangeMap, I);
-        } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
-          globalRangeMap.at(&I) = this->handlePHINode(operand,
-          globalRangeMap, I);
-        } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
-          globalRangeMap.at(&I) = this->handleLoadInst(operand,
-          globalRangeMap, I);
+      } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
+        globalRangeMap.at(&I) =
+            this->handleCastInst(operand, globalRangeMap, I);
+      } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
+        globalRangeMap.at(&I) = this->handlePHINode(operand, globalRangeMap, I);
+      } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
+        globalRangeMap.at(&I) =
+            this->handleLoadInst(operand, globalRangeMap, I);
       }
     }
   }
