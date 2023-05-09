@@ -260,15 +260,18 @@ KintConstantRange KintRangeAnalysisPass::handleStoreInst(
 KintConstantRange KintRangeAnalysisPass::handleReturnInst(
     ReturnInst *ret, RangeMap &globalRangeMap, Instruction &I) {
   Function *F = ret->getFunction();
+  // if (F->getReturnType()->isIntegerTy()) {
+  //   auto retValue = ret->getReturnValue();
+  //   if (retValue) {
+  //     auto retValueRange = getRange(retValue, globalRangeMap);
+  //     functionReturnRangeMap[F] =
+  //         functionReturnRangeMap[F].unionWith(retValueRange);
+  //   }
+  // }
+  // return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
   if (F->getReturnType()->isIntegerTy()) {
-    auto retValue = ret->getReturnValue();
-    if (retValue) {
-      auto retValueRange = getRange(retValue, globalRangeMap);
-      functionReturnRangeMap[F] =
-          functionReturnRangeMap[F].unionWith(retValueRange);
-    }
+   functionReturnRangeMap[F] = getRange(ret->getReturnValue(), globalRangeMap).unionWith(functionReturnRangeMap[F]);
   }
-  return KintConstantRange(I.getType()->getIntegerBitWidth(), true);
 }
 
 KintConstantRange KintRangeAnalysisPass::handleSelectInst(
