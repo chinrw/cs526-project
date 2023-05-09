@@ -44,14 +44,14 @@ public:
 private:
   // store the range for each value
   RangeMap globalRangeMap;
-  DenseMap<const GlobalValue *, KintConstantRange> globalValueRangeMap;
-  DenseMap<const Function *, KintConstantRange> functionReturnRangeMap;
+  DenseMap<GlobalValue *, KintConstantRange> globalValueRangeMap;
+  DenseMap<Function *, KintConstantRange> functionReturnRangeMap;
   SetVector<Function *> taintedFunctions;
   SetVector<StringRef> sinkedFunctions;
   MapVector<Function *, std::vector<CallInst *>> functionsToTaintSources;
   DenseMap<BasicBlock *, SetVector<BasicBlock *>> backEdges;
   DenseMap<Value *, std::optional<z3::expr>> argValuetoSymbolicVar;
-  std::map<const Function *, RangeMap> functionsToRangeInfo;
+  std::map<Function *, RangeMap> functionsToRangeInfo;
   std::map<BasicBlock *, SmallVector<BasicBlock *, 2>> BBpathMap;
   std::optional<z3::solver> Solver;
   std::map<ICmpInst *, bool> impossibleBranches;
@@ -64,6 +64,7 @@ private:
   bool analyzeFunction(Function &F, RangeMap &globalRangeMap);
   void markSinkedFuncs(Function &F);
   void smtSolver(Module &M);
+  void backEdgeAnalysis(Function &F);
   void pathSolver(BasicBlock *curBB, BasicBlock *predBB);
   bool addRangeConstaints(const KintConstantRange &range, const z3::expr &bv);
 	bool sinkedReachable(Instruction *I);
@@ -72,7 +73,7 @@ private:
 	std::vector<CallInst *> getTaintSource(Function &F);
 
   KintConstantRange getRange(Value *var, RangeMap &rangeMap);
-  KintConstantRange getRangeByBB(Value *var, const BasicBlock *BB);
+  KintConstantRange getRangeByBB(Value *var, BasicBlock *BB);
   KintConstantRange handleCallInst(CallInst *operand, RangeMap &globalRangeMap,
                                    Instruction &I);
   KintConstantRange handleStoreInst(StoreInst *operand,

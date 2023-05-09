@@ -26,7 +26,7 @@
 
 using namespace llvm;
 
- KintConstantRange KintRangeAnalysisPass::getRangeByBB(Value *var, const BasicBlock *BB) {
+ KintConstantRange KintRangeAnalysisPass::getRangeByBB(Value *var, BasicBlock *BB) {
     return getRange(var, functionsToRangeInfo[BB->getParent()]);
  }
  KintConstantRange KintRangeAnalysisPass::getRange(Value *var, RangeMap &globalRangeMap) {

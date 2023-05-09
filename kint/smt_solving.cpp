@@ -16,6 +16,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
 #include <cstdint>
+#include <llvm/IR/CFG.h>
 #include <regex>
 #include <string>
 #include <sys/types.h>
@@ -29,6 +30,26 @@ z3::expr KintRangeAnalysisPass::ValuetoSymbolicVar(Value *arg) {
   auto lconst = dyn_cast<ConstantInt>(arg);
   return Solver.value().ctx().bv_val(lconst->getZExtValue(),
                                      lconst->getType()->getIntegerBitWidth());
+}
+
+void KintRangeAnalysisPass::backEdgeAnalysis(Function &F) {
+  for (auto & BBRef : F) {
+    auto BB = &BBRef;
+    if(backEdges.count(BB) == 0) {
+      backEdges[BB] = {};
+      std::vector<BasicBlock *> remoteSuccessors {BB};
+      while (!remoteSuccessors.empty()) {
+        auto currentSuccessors = remoteSuccessors.back();
+        remoteSuccessors.pop_back();
+        for(auto successor : successors(currentSuccessors)) {
+          if(successor != BB && !backEdges[BB].contains(successor)) {
+            backEdges[BB].insert(successor);
+            remoteSuccessors.push_back(successor);
+          }
+        }
+      }
+    }
+  }
 }
 
 bool KintRangeAnalysisPass::addRangeConstaints(const KintConstantRange &range,
@@ -142,7 +163,7 @@ void KintRangeAnalysisPass::pathSolver(BasicBlock *curBB, BasicBlock *predBB) {
               default:
                 outs() << "Unhandled predicate: " << cmp->getPredicate()
                        << "\n";
-                break;
+                return z3::expr(Solver.value().ctx());
               }
             };
 
