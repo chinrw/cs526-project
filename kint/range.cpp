@@ -146,19 +146,28 @@ void KintRangeAnalysisPass::printRanges() {
   for (auto F : sinkedFunctions) {
     outs() << "Function: " << F << "\n";
   }
+
+  outs() << "Printing impossible branches\n";
+  for (auto [Cmp, BB] : impossibleBranches) {
+    if (BB) {
+      outs() << "Cmp: " << *Cmp << "\n";
+    }
+  }
 }
 
 PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
                                              ModuleAnalysisManager &MAM) {
 
   outs() << "Running KintRangeAnalysisPass on module" << M.getName() << "\n";
-  auto &LCG = MAM.getResult<LazyCallGraphAnalysis>(M);
 
   auto ctx = new z3::context;
   Solver = z3::solver(*ctx);
 
   // mark taint sources
   for (auto &F : M) {
+    if (!F.isDeclaration()) {
+      backEdgeAnalysis(F);
+    }
     auto taintSources = getTaintSource(F);
     markSinkedFuncs(F);
     if (isTaintSource(F.getName())) {
@@ -178,6 +187,10 @@ PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
     const auto originalFunctionsRangeInfo = functionsToRangeInfo;
     const auto originalGlobalValueRangeMap = globalValueRangeMap;
     const auto originalFunctionReturnRangeMap = functionReturnRangeMap;
+
+    for (auto F : rangeAnalysisFunctions) {
+      rangeAnalysis(*F);
+    }
 
     if (functionsToRangeInfo == originalFunctionsRangeInfo &&
         globalValueRangeMap == originalGlobalValueRangeMap &&

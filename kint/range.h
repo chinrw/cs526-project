@@ -48,6 +48,7 @@ private:
   DenseMap<const GlobalValue *, KintConstantRange> globalValueRangeMap;
   DenseMap<Function *, KintConstantRange> functionReturnRangeMap;
   SetVector<Function *> taintedFunctions;
+	SetVector<Function *> rangeAnalysisFunctions;
   SetVector<StringRef> sinkedFunctions;
   MapVector<Function *, std::vector<CallInst *>> functionsToTaintSources;
   DenseMap<BasicBlock *, SetVector<BasicBlock *>> backEdges;

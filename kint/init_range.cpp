@@ -43,13 +43,22 @@ void KintRangeAnalysisPass::initFunctionReturn(Module &M) {
             F.getReturnType()->getIntegerBitWidth());
 
         // init the range of function parameters
-
+        auto EB = functionsToRangeInfo[&F][&(F.getEntryBlock())];
         for (auto &A : F.args()) {
           if (A.getType()->isIntegerTy()) {
-            // TODO taint source check
+            // taint source check
+            if (isTaintSource(F.getName())) {
+              EB[&A] =
+                  KintConstantRange::getFull(A.getType()->getIntegerBitWidth());
+            } else {
+              // get empty range
+              EB[&A] = KintConstantRange::getEmpty(
+                  A.getType()->getIntegerBitWidth());
+            }
           }
         }
       }
+      rangeAnalysisFunctions.insert(&F);
     }
   }
 }
