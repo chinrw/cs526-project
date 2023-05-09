@@ -111,56 +111,81 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
   return functionConverged;
 }
 
+void KintRangeAnalysisPass::printRanges() {
+  outs() << "Printing ranges for all function return\n";
+  for (auto [F, range] : functionReturnRangeMap) {
+    outs() << "Function: " << F->getName() << "\n";
+    outs() << "Range: " << range << "\n";
+  }
+
+  outs() << "Printing ranges for all global variables\n";
+  for (auto [GV, range] : globalRangeMap) {
+    outs() << "Global Variable: " << GV->getName() << "\n";
+    outs() << "Range: " << range << "\n";
+  }
+
+  outs() << "Printing ranges for array index out of bounds\n";
+  for (auto G : gepOutOfRange) {
+    outs() << "Instruction name: " << G->getName() << "\n";
+  }
+
+  outs() << "Printing tainted Functions\n";
+  for (auto F : taintedFunctions) {
+    outs() << "Function: " << F->getName() << "\n";
+  }
+
+  outs() << "Printing tainted Instructions\n";
+  for (auto [F, I] : functionsToTaintSources) {
+    outs() << "Function: " << F->getName() << "\n";
+  }
+
+  outs() << "Printing sinked Functions\n";
+  for (auto F : sinkedFunctions) {
+    outs() << "Function: " << F << "\n";
+  }
+}
+
 PreservedAnalyses KintRangeAnalysisPass::run(Module &M,
                                              ModuleAnalysisManager &MAM) {
 
   outs() << "Running KintRangeAnalysisPass on module" << M.getName() << "\n";
   auto &LCG = MAM.getResult<LazyCallGraphAnalysis>(M);
-  const size_t maxIterations = 10;
 
   auto ctx = new z3::context;
   Solver = z3::solver(*ctx);
 
   // mark taint sources
   for (auto &F : M) {
-    auto taintSource = getTaintSource(F);
+    auto taintSources = getTaintSource(F);
     markSinkedFuncs(F);
     if (isTaintSource(F.getName())) {
-      functionsToTaintSources[&F] = std::move(taintSource);
+      functionsToTaintSources[&F] = std::move(taintSources);
     }
   }
 
   // Initialize the ranges for the globalRangeMap.
   initRange(M);
 
+  const size_t maxIterations = 10;
+
   // Perform the range analysis iteratively until convergence or a fixed
   // number of iterations.
   for (size_t iteration = 0; iteration < maxIterations; ++iteration) {
-    bool hasConverged = true;
 
-    LCG.buildRefSCCs();
+    const auto originalFunctionsRangeInfo = functionsToRangeInfo;
+    const auto originalGlobalValueRangeMap = globalValueRangeMap;
+    const auto originalFunctionReturnRangeMap = functionReturnRangeMap;
 
-    for (LazyCallGraph::RefSCC &ref_scc : LCG.postorder_ref_sccs()) {
-      for (LazyCallGraph::SCC &scc : ref_scc) {
-        for (LazyCallGraph::Node &node : scc) {
-          Function &F = node.getFunction();
-
-          // analyzeFunction now returns a boolean indicating if the function
-          // analysis has converged
-          bool functionConverged = analyzeFunction(F, globalRangeMap);
-
-          // Update hasConverged if function analysis has not converged
-          hasConverged = functionConverged;
-        }
-      }
-    }
-
-    if (hasConverged) {
+    if (functionsToRangeInfo == originalFunctionsRangeInfo &&
+        globalValueRangeMap == originalGlobalValueRangeMap &&
+        functionReturnRangeMap == originalFunctionReturnRangeMap) {
+      // converaged
       break;
     }
   }
 
-  // Use the globalRangeMap for further analysis or optimization.
+  smtSolver(M);
+  printRanges();
 
   return PreservedAnalyses::all();
 }

@@ -126,7 +126,6 @@ void KintRangeAnalysisPass::initGlobalVariables(Module &M) {
 void KintRangeAnalysisPass::initRange(Module &M) {
 
   for (auto &F : M) {
-		outs() << "initRange: " << F.getName() << "\n";
     auto taintSources = getTaintSource(F);
     markSinkedFuncs(F);
   }

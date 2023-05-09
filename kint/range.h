@@ -66,6 +66,8 @@ private:
   void smtSolver(Module &M);
   void backEdgeAnalysis(Function &F);
   void pathSolver(BasicBlock *curBB, BasicBlock *predBB);
+	void printRanges();
+
   bool addRangeConstaints(const KintConstantRange &range, const z3::expr &bv);
 	bool sinkedReachable(Instruction *I);
 	bool isTaintSource(const StringRef funcName);

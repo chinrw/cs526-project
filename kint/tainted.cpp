@@ -85,15 +85,13 @@ void KintRangeAnalysisPass::markSinkedFuncs(Function &F) {
 }
 
 bool KintRangeAnalysisPass::isTaintSource(const StringRef funcName) {
-  const auto demangled_name =
-      StringRef(itaniumDemangle(funcName.data(), nullptr, nullptr, nullptr));
 
-  if (demangled_name.startswith("sys_"))
+  if (funcName.startswith("sys_"))
     return true;
 
   for (const auto &s : TAINT_FUNCS) {
     // check for syscall functions
-    if (demangled_name.contains(s))
+    if (funcName.contains(s))
       return true;
   }
   return false;
@@ -130,9 +128,19 @@ vector<CallInst *> KintRangeAnalysisPass::getTaintSource(Function &F) {
       outs() << "Taint Analysis -> Taint arg -> call inst: " << callName
              << "\n";
 
-      auto callInst = CallInst::Create(
-          F.getParent()->getOrInsertFunction(callName, arg.getType()),
-          arg.getName(), &*F.getEntryBlock().getFirstInsertionPt());
+      auto Callee = F.getParent()->getOrInsertFunction(callName, arg.getType());
+
+      // auto callInst = CallInst::Create(
+      //     Callee, arg.getName(), &*F.getEntryBlock().getFirstInsertionPt());
+      // Insert the call instruction before the terminator of the entry block
+      if (F.empty()) {
+        BasicBlock::Create(F.getContext(), "entry", &F);
+      }
+
+      auto &entryBlock = F.getEntryBlock();
+      Instruction *terminator = entryBlock.getTerminator();
+      auto callInst = CallInst::Create(Callee, arg.getName(), terminator);
+
       taintSources.push_back(callInst);
       arg.replaceAllUsesWith(callInst);
     }
