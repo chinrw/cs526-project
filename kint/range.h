@@ -3,6 +3,7 @@
 #include "llvm/ADT/MapVector.h"
 #include <llvm/IR/Function.h>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 #define DEBUG_TYPE "range"
 
@@ -44,7 +45,7 @@ public:
 private:
   // store the range for each value
   RangeMap globalRangeMap;
-  DenseMap<GlobalValue *, KintConstantRange> globalValueRangeMap;
+  DenseMap<const GlobalValue *, KintConstantRange> globalValueRangeMap;
   DenseMap<Function *, KintConstantRange> functionReturnRangeMap;
   SetVector<Function *> taintedFunctions;
   SetVector<StringRef> sinkedFunctions;
