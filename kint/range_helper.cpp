@@ -22,12 +22,109 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
+#include <string>
 #include <sys/types.h>
 
 using namespace llvm;
 
+ std::string KintRangeAnalysisPass::getBBLabel(BasicBlock *BB) {
+    std::string label;
+    raw_string_ostream rso(label);
+    BB->printAsOperand(rso, false);
+
+    return std::move(label);
+ }
+
+ constexpr auto KintRangeAnalysisPass::cmpRegion() {
+    return KintConstantRange::makeAllowedICmpRegion;
+ }
+
+ void KintRangeAnalysisPass::rangeAnalysis(Function &F) {
+    outs() << "Range Analysis for Function: " << F.getName() << "\n";
+    auto &BBRange = functionsToRangeInfo[&F];
+
+    for (auto &BBref : F) {
+        auto BB = &BBref;
+
+        auto &sumRange = BBRange[BB];
+
+        for(const auto &predBB : predecessors(BB)) {
+            if(backEdges[BB].contains(predBB))
+                continue;
+            outs() << "Trying to merge" << getBBLabel(predBB) << " and " << getBBLabel(BB) << "\n";
+            auto branchRange = BBRange[predBB];
+            if (auto terminator = predBB->getTerminator();
+            auto branch = dyn_cast<BranchInst>(terminator)) {
+                if (branch->isConditional()) {
+                    if (auto cmp = dyn_cast<ICmpInst>(branch->getCondition())) {
+                        auto lhs = cmp->getOperand(0);
+                        auto rhs = cmp->getOperand(1);
+
+                        if (!lhs->getType()->isIntegerTy() || !rhs->getType()->isIntegerTy()) {
+                            outs() << "The branch operands are not integers\n" << *cmp << "\n";
+                        } else {
+                            auto lRange = getRangeByBB(lhs, predBB);
+                            auto rRange = getRangeByBB(rhs, predBB);
+                            bool isTrueBranch = branch->getSuccessor(0) == BB;
+                            if(isTrueBranch) {
+                                KintConstantRange newLRange = KintRangeAnalysisPass::cmpRegion()(cmp->getPredicate(), rRange);
+                                KintConstantRange newRRange = KintRangeAnalysisPass::cmpRegion()(cmp->getSwappedPredicate(), lRange);
+
+                                // Don't change constant's value.
+                                branchRange[lhs] = dyn_cast<ConstantInt>(lhs) ? lRange : lRange.intersectWith(newLRange);
+                                branchRange[rhs] = dyn_cast<ConstantInt>(rhs) ? rRange : rRange.intersectWith(newRRange);
+                            } else {
+                                KintConstantRange newLRange = KintRangeAnalysisPass::cmpRegion()(cmp->getInversePredicate(), rRange);
+                                KintConstantRange newRRange = KintRangeAnalysisPass::cmpRegion()(cmp->getInversePredicate(cmp->getPredicate()), lRange);
+
+                                branchRange[lhs] = dyn_cast<ConstantInt>(lhs) ? lRange : lRange.intersectWith(newLRange);
+                                branchRange[rhs] = dyn_cast<ConstantInt>(rhs) ? rRange : rRange.intersectWith(newRRange);
+                            }
+
+                            if (branchRange[lhs].isEmptySet() || branchRange[rhs].isEmptySet()) {
+                                impossibleBranches[cmp] = isTrueBranch;
+                            } else {
+                                branchRange[cmp] = KintConstantRange(APInt(1, isTrueBranch));
+                            }
+                        }
+                    }
+                }
+            } else if (auto switchInst = dyn_cast<SwitchInst>(terminator)) {
+                auto cond = switchInst->getCondition();
+                if(cond->getType()->isIntegerTy()) {
+                    auto condRange = getRangeByBB(cond, predBB);
+                    auto emptyRange = 
+                        KintConstantRange::getEmpty(cond->getType()->getIntegerBitWidth());
+                    if (switchInst->getDefaultDest() == BB) {
+                        for (auto c : switchInst->cases()) {
+                            auto caseVal = c.getCaseValue();
+                            emptyRange = emptyRange.unionWith(caseVal->getValue());
+                        }
+                    } else {
+                        for(auto c : switchInst->cases()) {
+                            if(c.getCaseSuccessor() == BB) {
+                                auto caseVal = c.getCaseValue();
+                                emptyRange = emptyRange.unionWith(caseVal->getValue());
+                            }
+                        }
+                    }
+
+                    branchRange[cond] = condRange.intersectWith(emptyRange);
+                }
+            } else {
+                outs() << "Unknown terminator instruction: " << *predBB->getTerminator() << "\n";
+            }
+            analyzeFunction(F, branchRange);
+        }
+        if (BB->isEntryBlock()) {
+            outs() << "No predecessors for entry block: " << BB;
+            analyzeFunction(F, sumRange); 
+        }
+    }
+ }
+      
  KintConstantRange KintRangeAnalysisPass::getRangeByBB(Value *var, BasicBlock *BB) {
-    return getRange(var, functionsToRangeInfo[BB->getParent()]);
+    return getRange(var, functionsToRangeInfo[BB->getParent()][BB]);
  }
  KintConstantRange KintRangeAnalysisPass::getRange(Value *var, RangeMap &globalRangeMap) {
     auto itVar = globalRangeMap.find(const_cast<Value *>(var));

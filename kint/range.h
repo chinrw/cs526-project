@@ -52,7 +52,7 @@ private:
   MapVector<Function *, std::vector<CallInst *>> functionsToTaintSources;
   DenseMap<BasicBlock *, SetVector<BasicBlock *>> backEdges;
   DenseMap<Value *, std::optional<z3::expr>> argValuetoSymbolicVar;
-  std::map<Function *, RangeMap> functionsToRangeInfo;
+  std::map<Function *, DenseMap<BasicBlock*, RangeMap>> functionsToRangeInfo;
   std::map<BasicBlock *, SmallVector<BasicBlock *, 2>> BBpathMap;
   std::optional<z3::solver> Solver;
   std::map<ICmpInst *, bool> impossibleBranches;
@@ -69,11 +69,14 @@ private:
   void pathSolver(BasicBlock *curBB, BasicBlock *predBB);
 	void printRanges();
 
+  void rangeAnalysis(Function &F);
   bool addRangeConstaints(const KintConstantRange &range, const z3::expr &bv);
 	bool sinkedReachable(Instruction *I);
 	bool isTaintSource(const StringRef funcName);
+  constexpr auto cmpRegion();
 
 	std::vector<CallInst *> getTaintSource(Function &F);
+  std::string getBBLabel(BasicBlock *BB);
 
   KintConstantRange getRange(Value *var, RangeMap &rangeMap);
   KintConstantRange getRangeByBB(Value *var, BasicBlock *BB);

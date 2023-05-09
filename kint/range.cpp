@@ -62,9 +62,12 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
                                             RangeMap &globalRangeMap) {
   // TODO add a function to check if the globalRangeMap has converged
   bool functionConverged = false;
-
   for (BasicBlock &BB : F) {
+      auto &F = *BB.getParent();
+      auto &sumRng = functionsToRangeInfo[&F][&BB];
     for (Instruction &I : BB) {
+      auto getRng = [&globalRangeMap, this](auto var) 
+      {return getRange(var, globalRangeMap);};
       if (auto *call = dyn_cast_or_null<CallInst>(&I)) {
         auto itI = globalRangeMap.find(&I);
         if (itI != globalRangeMap.end()) {

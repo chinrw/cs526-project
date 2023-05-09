@@ -116,7 +116,7 @@ void KintRangeAnalysisPass::pathSolver(BasicBlock *curBB, BasicBlock *predBB) {
     return;
   }
 
-  auto currentBlockRange = functionsToRangeInfo[curBB->getParent()];
+  auto currentBlockRange = functionsToRangeInfo[curBB->getParent()][curBB];
 
   // If there is a predecessor block
   if (nullptr != predBB) {
