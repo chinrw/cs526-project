@@ -71,8 +71,11 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
           globalRangeMap.at(&I) = this->handleCallInst(call, globalRangeMap, I);
         }
       } else if (auto *store = dyn_cast_or_null<StoreInst>(&I)) {
-
+          globalRangeMap.at(&I) = 
+              this->handleStoreInst(store, globalRangeMap, I);
       } else if (auto *ret = dyn_cast_or_null<ReturnInst>(&I)) {
+          globalRangeMap.at(&I) = 
+              this->handleReturnInst(ret, globalRangeMap, I);
       }
       if (auto *operand = dyn_cast_or_null<BinaryOperator>(&I)) {
         // outs() << "Found binary operator: " << operand->getOpcodeName() <<
@@ -93,15 +96,15 @@ bool KintRangeAnalysisPass::analyzeFunction(Function &F,
       } else if (auto *operand = dyn_cast_or_null<SelectInst>(&I)) {
         globalRangeMap.at(&I) =
             this->handleSelectInst(operand, globalRangeMap, I);
-        // } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
-        //   globalRangeMap.at(&I) = this->handleCastInst(operand,
-        //   globalRangeMap, I);
-        // } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
-        //   globalRangeMap.at(&I) = this->handlePHINode(operand,
-        //   globalRangeMap, I);
-        // } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
-        //   globalRangeMap.at(&I) = this->handleLoadInst(operand,
-        //   globalRangeMap, I);
+        } else if (auto *operand = dyn_cast_or_null<CastInst>(&I)) {
+          globalRangeMap.at(&I) = this->handleCastInst(operand,
+          globalRangeMap, I);
+        } else if (auto *operand = dyn_cast_or_null<PHINode>(&I)) {
+          globalRangeMap.at(&I) = this->handlePHINode(operand,
+          globalRangeMap, I);
+        } else if (auto *operand = dyn_cast_or_null<LoadInst>(&I)) {
+          globalRangeMap.at(&I) = this->handleLoadInst(operand,
+          globalRangeMap, I);
       }
     }
   }
