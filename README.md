@@ -20,7 +20,7 @@ Before you can test it, you need to prepare an input file:
 
 ```bash
 # Make sure inside build folder generate an LLVM test file
-$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_hello.c -o ./build/input_for_hello.ll
+$LLVM_DIR/bin/clang -Xclang -disable-O0-optnone -S -emit-llvm ./tests/input_for_hello.c -o ./build/input_for_hello.ll
 ```
 
 Finally, run **HelloWorld** with
