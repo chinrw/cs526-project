@@ -136,7 +136,9 @@ vector<CallInst *> KintRangeAnalysisPass::getTaintSource(Function &F) {
       //     Callee, arg.getName(), &*F.getEntryBlock().getFirstInsertionPt());
       // Insert the call instruction before the terminator of the entry block
       if (F.empty()) {
-        BasicBlock::Create(F.getContext(), "entry", &F);
+				// FIXME: this is a hack to avoid the empty function but ignore libc
+				// function
+        return taintSources;
       }
 
       auto &entryBlock = F.getEntryBlock();
