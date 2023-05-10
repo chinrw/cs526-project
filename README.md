@@ -58,7 +58,7 @@ Before you can test it, you need to prepare an input file:
 ```bash
 # Make sure inside build folder generate an LLVM test file
 $LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_cc.c -o ./build/input_for_cc.ll
-$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_range.c -o ./build/input_for_range.ll
+$LLVM_DIR/bin/clang -disable-O0-optnone -S -emit-llvm ./tests/input_for_taint.c -o ./build/input_for_taint.ll
 ```
 
 Finally, run **KINT** with
@@ -68,3 +68,10 @@ on Linux
 ```bash
 # Run the pass
 $LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=check-insertion-pass -disable-output -debug ./build/input_for_cc.ll
+$LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=kint-range-analysis -disable-output ./build/input_for_taint.ll
+```
+
+Or run in one command
+```bash
+${LLVM_DIR}/bin/clang -emit-llvm -c -o - tests/input_for_taint.c | ${LLVM_DIR}/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=kint-range-analysis -disable-output -
+```
