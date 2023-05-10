@@ -32,7 +32,7 @@ void CallInstVisitor::visitCallInst(CallInst &CI) {
     auto P = PC->Get(CI.getParent());
     auto V = VC->Get(CI.getOperand(0)).bit2bool(0);
     Solve(P && V);
-  } else if (Name.starts_with("__kint_overflow.")) {
+  } else if (Name.startswith("__kint_overflow.")) {
     auto P = PC->Get(CI.getParent());
 
     // auto BitWidth = std::stoi(Name.substr(Name.find_last_of(".") + 1).str());
