@@ -16,7 +16,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
 #include <cstdint>
-#include <llvm/IR/CFG.h>
 #include <regex>
 #include <string>
 #include <sys/types.h>
@@ -212,7 +211,6 @@ void KintRangeAnalysisPass::pathSolver(BasicBlock *curBB, BasicBlock *predBB) {
         } else {
           for (auto c : switchInst->cases()) {
             if (c.getCaseSuccessor() == curBB) {
-              auto caseVal = c.getCaseValue();
               Solver.value().add(ValuetoSymbolicVar(cond) ==
                                  Solver.value().ctx().bv_val(
                                      c.getCaseValue()->getZExtValue(),

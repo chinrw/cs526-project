@@ -20,14 +20,9 @@ void KintRangeAnalysisPass::analyzeFunction(Function &F,
                                             RangeMap &globalRangeMap) {
   // TODO add a function to check if the globalRangeMap has converged
   for (BasicBlock &BB : F) {
-    auto &F = *BB.getParent();
     // FIXME unused variable
-    auto &sumRng = functionsToRangeInfo[&F][&BB];
     for (Instruction &I : BB) {
       // FIXME unused variable
-      auto getRng = [&globalRangeMap, this](auto var) {
-        return getRange(var, globalRangeMap);
-      };
       if (auto *call = dyn_cast<CallInst>(&I)) {
         auto itI = globalRangeMap.find(&I);
         if (itI != globalRangeMap.end()) {
@@ -45,9 +40,9 @@ void KintRangeAnalysisPass::analyzeFunction(Function &F,
         globalRangeMap.emplace(
             &I, this->handleCastInst(operand, globalRangeMap, I));
       } else if (auto *operand = dyn_cast<BinaryOperator>(&I)) {
-        // KintConstantRange outputRange =
-        //     computeBinaryOperatorRange(operand, globalRangeMap);
-        // globalRangeMap.emplace(&I, outputRange);
+        KintConstantRange outputRange =
+            computeBinaryOperatorRange(operand, globalRangeMap);
+        globalRangeMap.emplace(&I, outputRange);
       } else if (auto *operand = dyn_cast<PHINode>(&I)) {
         globalRangeMap.at(&I) = this->handlePHINode(operand, globalRangeMap, I);
       } else if (auto *operand = dyn_cast<LoadInst>(&I)) {
