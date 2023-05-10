@@ -23,7 +23,11 @@ private:
 } // anonymous namespace
 
 void CallInstVisitor::visitCallInst(CallInst &CI) {
-  auto Name = CI.getCalledFunction()->getName();
+  auto Fn = CI.getCalledFunction();
+  if (!Fn) {
+    return;
+  }
+  auto Name = Fn->getName();
   if (Name.equals("__kint_check")) {
     auto P = PC->Get(CI.getParent());
     auto V = VC->Get(CI.getOperand(0)).bit2bool(0);
