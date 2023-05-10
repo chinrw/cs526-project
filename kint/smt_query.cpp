@@ -85,7 +85,7 @@ void CallInstVisitor::Solve(z3::expr Constraint) {
   errs() << "==================================================\n";
   errs() << "Constraint:\n" << Constraint.to_string() << "\n";
   if (Solver.check() == z3::sat) {
-    errs() << "Error example:\n" << Solver.get_model() << "\n";
+    errs() << "Error example:\n" << Solver.get_model().to_string() << "\n";
   } else {
     errs() << "OK\n";
   }
