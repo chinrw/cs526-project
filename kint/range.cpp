@@ -20,9 +20,7 @@ void KintRangeAnalysisPass::analyzeFunction(Function &F,
                                             RangeMap &globalRangeMap) {
   // TODO add a function to check if the globalRangeMap has converged
   for (BasicBlock &BB : F) {
-    // FIXME unused variable
     for (Instruction &I : BB) {
-      // FIXME unused variable
       if (auto *call = dyn_cast<CallInst>(&I)) {
         auto itI = globalRangeMap.find(&I);
         if (itI != globalRangeMap.end()) {
