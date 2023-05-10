@@ -71,8 +71,3 @@ on Linux
 $LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=check-insertion-pass,smt-query-pass -disable-output -debug ./build/input_for_cc.ll
 $LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=kint-range-analysis -disable-output ./build/input_for_taint.ll
 ```
-
-Or run in one command
-```bash
-${LLVM_DIR}/bin/clang -emit-llvm -c -o - tests/input_for_taint.c | ${LLVM_DIR}/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=kint-range-analysis -disable-output -
-```
