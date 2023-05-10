@@ -60,8 +60,8 @@ z3::expr ValueConstraint::Get(const Value *V) {
     return GetPtrToIntInst(PTII);
   }
   // fallback, i.e. load, extractvalue, etc.
-  errs() << "Unhandled Value " << V->getNameOrAsOperand() << ", " << __FILE__
-         << ":" << __LINE__ << "\n";
+  // errs() << "Unhandled Value " << V->getNameOrAsOperand() << ", " << __FILE__
+  //        << ":" << __LINE__ << "\n";
   return SymbolFor(V);
 }
 
