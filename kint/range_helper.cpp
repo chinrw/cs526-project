@@ -149,8 +149,8 @@ KintConstantRange KintRangeAnalysisPass::getRangeByBB(Value *var,
 
 KintConstantRange
 KintRangeAnalysisPass::getRange(Value *var, const RangeMap &globalRangeMap) {
-  auto itVar = globalRangeMap.find(const_cast<Value *>(var));
-  if (itVar != globalRangeMap.end()) {
+  // auto itVar = globalRangeMap.find(const_cast<Value *>(var));
+  if (this->globalRangeMap.count(const_cast<Value *>(var))) {
     return globalRangeMap.at(var);
   }
   // if the var is a constant integer
@@ -285,37 +285,37 @@ KintConstantRange KintRangeAnalysisPass::handleSelectInst(
 KintConstantRange KintRangeAnalysisPass::handleCastInst(
     CastInst *operand, RangeMap &globalRangeMap, Instruction &I) {
   outs() << "Found cast instruction: " << operand->getOpcodeName() << "\n";
-  KintConstantRange outputRange =
-      KintConstantRange::getFull(operand->getType()->getIntegerBitWidth());
-  globalRangeMap.emplace(&I, outputRange);
+  KintConstantRange outputRange = KintConstantRange();
   // Get the input operand of the cast instruction
   auto inp = operand->getOperand(0);
   // If the input operand is not an integer type, set the range to the full bit
   // width
-  if (!inp->getType()->isIntegerTy()) {
-    outputRange =
-        KintConstantRange(operand->getType()->getIntegerBitWidth(), true);
-  } else {
-    // If the input is an integer type, compute the output range based on the
-    // cast operation
-    auto itInp = globalRangeMap.find(inp);
-    if (itInp != globalRangeMap.end()) {
-      auto inpRange = itInp->second;
-      const uint32_t bits = operand->getType()->getIntegerBitWidth();
-      switch (operand->getOpcode()) {
-      case CastInst::Trunc:
-        outputRange = inpRange.truncate(bits);
-        break;
-      case CastInst::ZExt:
-        outputRange = inpRange.zeroExtend(bits);
-        break;
-      case CastInst::SExt:
-        outputRange = inpRange.signExtend(bits);
-        break;
-      default:
-        outs() << "Unsupported cast instruction: " << operand->getOpcodeName()
-               << "\n";
-        outputRange = inpRange;
+  if (operand->getType()->isIntegerTy()) {
+    if (!inp->getType()->isIntegerTy()) {
+      outputRange =
+          KintConstantRange(operand->getType()->getIntegerBitWidth(), true);
+    } else {
+      // If the input is an integer type, compute the output range based on the
+      // cast operation
+      auto itInp = globalRangeMap.find(inp);
+      if (itInp != globalRangeMap.end()) {
+        auto inpRange = itInp->second;
+        const uint32_t bits = operand->getType()->getIntegerBitWidth();
+        switch (operand->getOpcode()) {
+        case CastInst::Trunc:
+          outputRange = inpRange.truncate(bits);
+          break;
+        case CastInst::ZExt:
+          outputRange = inpRange.zeroExtend(bits);
+          break;
+        case CastInst::SExt:
+          outputRange = inpRange.signExtend(bits);
+          break;
+        default:
+          outs() << "Unsupported cast instruction: " << operand->getOpcodeName()
+                 << "\n";
+          return inpRange;
+        }
       }
     }
   }

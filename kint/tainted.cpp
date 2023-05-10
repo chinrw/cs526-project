@@ -60,6 +60,8 @@ void KintRangeAnalysisPass::markSinkedFuncs(Function &F) {
   for (auto &BB : F) {
     for (auto &I : BB) {
       if (auto *CI = dyn_cast<CallInst>(&I)) {
+        if (CI->getCalledFunction() == nullptr)
+          continue;
         auto funcName = CI->getCalledFunction()->getName();
         if (checkFuncSinked(funcName)) {
           const auto demangled_name =
