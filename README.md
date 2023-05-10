@@ -68,6 +68,6 @@ on Linux
 
 ```bash
 # Run the pass
-$LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=check-insertion-pass,smt-query-pass -disable-output -debug ./build/input_for_cc.ll
+$LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=check-insertion-pass,smt-query-pass -disable-output ./build/input_for_cc.ll
 $LLVM_DIR/bin/opt -load-pass-plugin ./build/lib/KINT.so -passes=kint-range-analysis -disable-output ./build/input_for_taint.ll
 ```
