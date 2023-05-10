@@ -3,21 +3,22 @@
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/raw_ostream.h"
-#include <string>
 #include <algorithm>
 
 using namespace llvm;
 
-static const char *PtrToString(const Value *I) {
+std::string PtrToString(const Value *I) {
   std::string name;
   raw_string_ostream(name) << I;
-  return name.c_str();
+  return name;
 }
 
 static z3::expr ConvertInt(z3::context &CTX, const APInt &I) {
   SmallVector<char> Str;
   I.toStringUnsigned(Str);
-  return CTX.bv_val(Str.begin(), I.getBitWidth());
+  Str.push_back('\0');
+  auto result = CTX.bv_val(Str.begin(), I.getBitWidth());
+  return result;
 }
 
 bool ValueConstraint::isAnalyzable(const Value *V) {
@@ -26,9 +27,11 @@ bool ValueConstraint::isAnalyzable(const Value *V) {
 }
 
 z3::expr ValueConstraint::SymbolFor(const Value *V) {
-  return CTX.bv_const(PtrToString(V), DL.getTypeSizeInBits(V->getType()));
+  return CTX.bv_const(PtrToString(V).c_str(),
+                      DL.getTypeSizeInBits(V->getType()));
 }
 
+// must return bitvectors
 z3::expr ValueConstraint::Get(const Value *V) {
   // Precondition: Type of V isAnalyzable, i.e. no floats, vectors, etc.
   // todo cache here
@@ -142,6 +145,11 @@ z3::expr ValueConstraint::GetGEPOperator(const GEPOperator *GEPO) {
   return Base + TotalOffset;
 }
 
+static z3::expr Bool2BV(const z3::expr &B) {
+  auto &CTX = B.ctx();
+  return z3::ite(B, CTX.bv_val(1, 1), CTX.bv_val(0, 1));
+}
+
 z3::expr ValueConstraint::GetICmpInst(const ICmpInst *ICI) {
   auto LHS = Get(ICI->getOperand(0));
   auto RHS = Get(ICI->getOperand(1));
@@ -150,25 +158,25 @@ z3::expr ValueConstraint::GetICmpInst(const ICmpInst *ICI) {
   default:
     llvm_unreachable("Unknown ICmpInst!");
   case CmpInst::ICMP_EQ:
-    return LHS == RHS;
+    return Bool2BV(LHS == RHS);
   case CmpInst::ICMP_NE:
-    return LHS != RHS;
+    return Bool2BV(LHS != RHS);
   case CmpInst::ICMP_UGT:
-    return z3::ugt(LHS, RHS);
+    return Bool2BV(z3::ugt(LHS, RHS));
   case CmpInst::ICMP_UGE:
-    return z3::uge(LHS, RHS);
+    return Bool2BV(z3::uge(LHS, RHS));
   case CmpInst::ICMP_ULT:
-    return z3::ult(LHS, RHS);
+    return Bool2BV(z3::ult(LHS, RHS));
   case CmpInst::ICMP_ULE:
-    return z3::ule(LHS, RHS);
+    return Bool2BV(z3::ule(LHS, RHS));
   case CmpInst::ICMP_SGT:
-    return LHS > RHS;
+    return Bool2BV(LHS > RHS);
   case CmpInst::ICMP_SGE:
-    return LHS >= RHS;
+    return Bool2BV(LHS >= RHS);
   case CmpInst::ICMP_SLT:
-    return LHS < RHS;
+    return Bool2BV(LHS < RHS);
   case CmpInst::ICMP_SLE:
-    return LHS <= RHS;
+    return Bool2BV(LHS <= RHS);
   }
 }
 
@@ -201,9 +209,9 @@ z3::expr ValueConstraint::GetBinaryOperator(const BinaryOperator *BO) {
   case Instruction::AShr:
     return z3::ashr(LHS, RHS);
   case Instruction::And:
-    return LHS && RHS;
+    return LHS & RHS;
   case Instruction::Or:
-    return LHS || RHS;
+    return LHS | RHS;
   case Instruction::Xor:
     return LHS ^ RHS;
   }
@@ -267,7 +275,7 @@ z3::expr PathConstraint::EdgeCondition(const BasicBlock *BB,
       return CTX.bool_val(true);
     }
     // check which case the edge is on
-    auto Cond = VC.Get((BI->getCondition()));
+    auto Cond = VC.Get(BI->getCondition()).bit2bool(0);
 
     return BI->getSuccessor(0) == BB ? Cond : !Cond;
 

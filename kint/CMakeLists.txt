@@ -65,6 +65,8 @@ add_llvm_library(
   # List your source files here.
   check_insertion.cpp
   check_insertion.h
+  smt_query.cpp
+  smt_query.h
   constraint.cpp
   constraint.h
   tainted.cpp
